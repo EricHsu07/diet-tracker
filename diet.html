@@ -1797,8 +1797,9 @@ function findFood(name){
 function renderSummary(){
   const dates=Object.keys(DATA).sort();
   const box=document.getElementById('summary');
-  const lastD=dates[dates.length-1];
-  const firstW=DATA[dates[0]]?.w, lastW=DATA[lastD]?.w;
+  // 累计变化：取「有体重记录」的最早一天与最近一天，避免空壳日把指标拖成 —
+  const wDates=dates.filter(d=>DATA[d]&&DATA[d].w);
+  const firstW=wDates.length?DATA[wDates[0]].w:null, lastW=wDates.length?DATA[wDates[wDates.length-1]].w:null;
   const tdee=Math.round(getTDEE());
   let totalIntake=0,totalSport=0,n=0,defSum=0;
   dates.forEach(d=>{
@@ -1812,8 +1813,9 @@ function renderSummary(){
   // 核心指标条：上浮到今日卡下方，免下翻汇总看板（始终显示，数据不足时显示占位）
   const ms=document.getElementById('miniStat');
   if(ms){
-    const chg = (firstW&&lastW)? (firstW-lastW) : null;
-    const wVal = (PARAM.w && Number(PARAM.w)>0)? fmt1(PARAM.w) : '—';
+    const chg = (firstW!=null&&lastW!=null)? (firstW-lastW) : null;
+    const todayW = DATA[todayStr()]?.w;
+    const wVal = (todayW!=null&&Number(todayW)>0)? fmt1(todayW) : ((PARAM.w && Number(PARAM.w)>0)? fmt1(PARAM.w) : '—');
     const chgVal = chg==null?'—':((chg>0?'+':'')+fmt1(chg));
     const chgColor = chg==null?'var(--muted)':(chg>0?'var(--green2)':'var(--red)');
     const defVal = (avgDef>=0?'+':'')+fmt(avgDef);
@@ -1825,8 +1827,8 @@ function renderSummary(){
       <div class="ms"><div class="v">${n}</div><div class="l">已记录天</div></div>`;
   }
   box.innerHTML=`
-    <div class="stat"><div class="v">${fmt1(PARAM.w)}</div><div class="l">当前体重(参数)kg</div></div>
-    <div class="stat"><div class="v">${firstW&&lastW?fmt((firstW-lastW).toFixed(1)):'—'}</div><div class="l">累计变化 kg</div></div>
+    <div class="stat"><div class="v">${fmt1(wVal)}</div><div class="l">当前体重kg</div></div>
+    <div class="stat"><div class="v">${firstW!=null&&lastW!=null?fmt((firstW-lastW).toFixed(1)):'—'}</div><div class="l">累计变化 kg</div></div>
     <div class="stat"><div class="v">${tdee}</div><div class="l">每日总消耗 TDEE kcal</div></div>
     <div class="stat"><div class="v">${fmt(totalIntake/n||0)}</div><div class="l">日均摄入 kcal</div></div>
     <div class="stat"><div class="v">${fmt(totalSport/n||0)}</div><div class="l">日均运动消耗 kcal</div></div>
