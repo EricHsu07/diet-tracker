@@ -1,0 +1,25 @@
+{
+  "name": "16:8 减脂打卡",
+  "short_name": "减脂打卡",
+  "description": "16:8轻断食打卡助手 · 拍照算热量 · 离线可用",
+  "start_url": "./diet.html",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#0e1822",
+  "theme_color": "#0e1822",
+  "lang": "zh-CN",
+  "icons": [
+    {
+      "src": "./pwa-icons/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "./pwa-icons/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}

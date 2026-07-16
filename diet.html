@@ -1,0 +1,2132 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<title>16:8 减脂打卡 · 自动算卡路里与热量缺口</title>
+<!-- 微信分享卡片（在微信里转发时显示的标题/描述/图标） -->
+<meta property="og:title" content="16:8 减脂打卡 · 自动算卡路里">
+<meta property="og:description" content="拍照/输入三餐自动算热量，步数推活动系数，实时热量缺口。数据本地保存。">
+<meta property="og:image" content="https://via.placeholder.com/120x120/15a86b/ffffff?text=16:8">
+<!-- 微信状态栏/安卓任务卡主题色 -->
+<meta name="theme-color" content="#0e1822">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="format-detection" content="telephone=no">
+<link rel="manifest" href="./manifest.json">
+<link rel="apple-touch-icon" href="./pwa-icons/icon-192.png">
+<style>
+  :root{
+    /* 冷色调主题：冰蓝/青蓝为主色，去掉暖橙主导；红绿仅作状态色 */
+    --ice:#6fd3ff; --ice2:#9fe3ff; --ice-d:#3aa9de;
+    --cyan:#3fd0e0; --cyan-d:#1f9fb0;
+    --green:#27d3a8; --green2:#4fe6c2; --green-d:#159e7c;
+    --blue:#6aa8ff; --blue-d:#3f7fe0;
+    /* 紫色系：作为第二点缀主色（你喜欢的） */
+    --violet:#b08cff; --violet2:#c9b0ff; --violet-d:#7c5cff;
+    --violet-soft:rgba(176,140,255,.16); --violet-line:#3a2f55;
+    /* 底色深冷：近黑蓝，统一青蓝同色系 */
+    --bg:#0a1016; --bg2:#0e1822; --card:#101e29; --card2:#162836;
+    --line:#22384a; --text:#e3eef6; --muted:#7e98a8;
+    --red:#ff7a85; --warn:#13212e; --warnb:#6fd3ff;
+    --amber:#ffb877; /* BMI 超重专用暖色，仅作状态区分 */
+    --shadow:0 2px 6px rgba(0,0,0,.32),0 10px 30px rgba(0,0,0,.38);
+    --shadow-hover:0 8px 20px rgba(111,211,255,.16),0 16px 40px rgba(111,211,255,.12);
+    --radius:18px;
+    /* 过渡：相邻色相柔和过度（color-mix，不支持时回退到实色） */
+    --grad-main:linear-gradient(120deg,var(--violet2) 0%,#9db8ff 38%,var(--ice) 70%,var(--cyan) 100%);
+    --grad-soft:linear-gradient(135deg,#13222e 0%,#102029 55%,#0e1d28 100%);
+  }
+  *{box-sizing:border-box}
+  body{
+    margin:0;font-family:-apple-system,BlinkMacSystemFont,"PingFang SC","Microsoft YaHei",Segoe UI,sans-serif;
+    color:var(--text);font-size:14px;line-height:1.6;-webkit-font-smoothing:antialiased;
+    /* 冷色 mesh 背景：冰蓝 + 青色 + 紫色点缀，无暖色，加更大范围渐变过渡 */
+    background:
+      radial-gradient(at 10% 6%, rgba(176,140,255,.14) 0px, transparent 50%),
+      radial-gradient(at 50% 0%, rgba(111,211,255,.12) 0px, transparent 48%),
+      radial-gradient(at 88% 8%, rgba(63,208,224,.13) 0px, transparent 46%),
+      radial-gradient(at 85% 92%, rgba(124,92,255,.14) 0px, transparent 50%),
+      radial-gradient(at 12% 95%, rgba(111,211,255,.10) 0px, transparent 48%),
+      linear-gradient(160deg,#0a1016 0%,#0b1622 30%,#0c1620 60%,#0b1018 100%);
+    background-attachment:fixed;min-height:100vh;
+  }
+  header{
+    position:relative;overflow:hidden;
+    background:linear-gradient(120deg,#1f9fb0 0%,#3fd0e0 22%,#6fd3ff 52%,#9db8ff 78%,#b08cff 100%);
+    color:#04222b;padding:30px 26px;margin:14px;border-radius:24px;
+    box-shadow:0 14px 40px rgba(124,92,255,.22)}
+  header::after{content:"";position:absolute;inset:0;
+    background:radial-gradient(circle at 88% 18%,rgba(255,255,255,.30),transparent 38%),
+               radial-gradient(circle at 8% 92%,rgba(159,227,255,.22),transparent 42%),
+               radial-gradient(circle at 60% 120%,rgba(255,255,255,.12),transparent 45%);
+    pointer-events:none}
+  header h1{margin:0;font-size:24px;letter-spacing:.3px;display:flex;align-items:center;gap:10px;position:relative;font-weight:800;text-shadow:0 1px 2px rgba(255,255,255,.20)}
+  header h1 .logo{display:inline-flex;align-items:center;justify-content:center;width:38px;height:38px;border-radius:12px;background:rgba(255,255,255,.34);box-shadow:inset 0 0 0 1px rgba(255,255,255,.5);font-size:22px;backdrop-filter:blur(4px)}
+  header p{margin:8px 0 0;opacity:.88;font-size:13px;font-weight:500;position:relative;color:#062a35}
+  .wrap{max-width:1080px;margin:0 auto;padding:6px 14px 30px}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);padding:20px;margin-bottom:18px;box-shadow:var(--shadow);transition:.25s}
+  /* 激励 banner（纯文字，无图片） */
+  .motiv{background:linear-gradient(120deg,#102531,#0d1f2b);border:1px solid #1d3a4a;border-radius:16px;padding:14px 16px}
+  .motiv .m-t{font-size:15px;font-weight:800;color:var(--ice2)}
+  .motiv .m-s{font-size:12px;color:var(--muted);margin-top:3px}
+  .card:hover{box-shadow:var(--shadow-hover);transform:translateY(-2px);border-color:#2f4d63}
+  .card h2{margin:0 0 14px;font-size:16px;color:var(--text);display:flex;align-items:center;gap:8px;font-weight:800}
+  .card h2::before{content:"";width:5px;height:18px;border-radius:4px;background:linear-gradient(160deg,var(--violet),#9db8ff 50%,var(--ice))}
+  .row{display:flex;flex-wrap:wrap;gap:12px;align-items:flex-end}
+  .fld{display:flex;flex-direction:column;gap:5px}
+  .fld label{font-size:12px;color:var(--muted);font-weight:600}
+  input,select,textarea{font-family:inherit;font-size:13px;padding:9px 11px;border:1.5px solid var(--line);border-radius:11px;background:var(--bg2);color:var(--text);transition:.15s}
+  input::placeholder,textarea::placeholder{color:#5b6675}
+  input:focus,select:focus,textarea:focus{outline:none;border-color:var(--violet);box-shadow:0 0 0 3px rgba(176,140,255,.18);background:#181430}
+  button{cursor:pointer;border:none;border-radius:11px;padding:9px 16px;font-size:13px;font-weight:700;background:var(--grad-main);color:#0a1430;transition:.22s ease;box-shadow:0 3px 10px rgba(124,92,255,.22)}
+  button:hover{background:linear-gradient(120deg,var(--violet),var(--violet-d));box-shadow:0 6px 16px rgba(124,92,255,.34);transform:translateY(-1px)}
+  button:active{transform:translateY(0)}
+  button.ghost{background:var(--card2);color:var(--violet2);box-shadow:none;border:1.5px solid var(--violet-line)}
+  button.ghost:hover{background:#221a38;transform:none;box-shadow:none}
+  button.danger{background:var(--card2);color:#ff9aa1;box-shadow:none;border:1.5px solid #5a3138}
+  button.danger:hover{background:#2c1f24;color:var(--red);transform:none;box-shadow:none}
+  .btn-sm{padding:6px 11px;font-size:12px;border-radius:9px}
+  .kcal{font-weight:800;color:var(--ice2)}
+  .hint{font-size:12px;color:var(--muted);margin-top:8px;line-height:1.5}
+  .ai-box{display:none;background:linear-gradient(135deg,#15262f,#101e29);border:1px solid #1d3a4a;border-radius:14px;padding:14px;margin-top:12px}
+  .ai-box.open{display:block}
+  .tag{display:inline-flex;background:#15262f;border:1px solid #1d3a4a;border-radius:14px;padding:3px 10px;font-size:11.5px;align-items:center;gap:5px;margin:3px}
+  .tag b{color:var(--ice2)}
+  .tag .x{cursor:pointer;color:var(--muted);font-weight:700;padding:0 2px;border-radius:50%}
+  .tag .x:hover{color:var(--red);background:#3a2226}
+  .tag input{width:50px;padding:2px 4px;font-size:11px;border:1px solid #1d3a4a;border-radius:6px;background:var(--bg2);color:var(--text)}
+  .summary{display:flex;flex-wrap:wrap;gap:14px}
+  .stat{flex:1;min-width:150px;background:linear-gradient(135deg,#13222e 0%,#102029 55%,#0e1d28 100%);border:1px solid var(--line);border-radius:14px;padding:14px 16px;box-shadow:0 4px 14px rgba(0,0,0,.25);transition:.22s}
+  .stat .v{font-size:24px;font-weight:800;color:var(--ice2);line-height:1.2}
+  .stat .l{font-size:12px;color:var(--muted);margin-top:2px}
+  .small-link{font-size:12px;color:var(--ice);text-decoration:none;cursor:pointer;font-weight:600}
+  .small-link:hover{text-decoration:underline}
+  .modal-bg{position:fixed;inset:0;background:rgba(16,24,40,.45);backdrop-filter:blur(4px);display:none;align-items:flex-start;justify-content:center;z-index:50;padding:40px 12px;overflow:auto}
+  .modal-bg.open{display:flex;animation:fadeIn .2s ease}
+  @keyframes fadeIn{from{opacity:0}to{opacity:1}}
+  .modal{background:var(--card);backdrop-filter:blur(12px);border:1px solid var(--line);border-radius:22px;padding:22px;width:min(580px,94vw);max-height:none;box-shadow:0 24px 60px rgba(0,0,0,.5);animation:pop .22s cubic-bezier(.2,.9,.3,1.2)}
+  @keyframes pop{from{transform:translateY(12px) scale(.98);opacity:0}to{transform:translateY(0) scale(1);opacity:1}}
+  .modal .mhead{display:flex;justify-content:space-between;align-items:center;margin-bottom:14px}
+  .modal h3{margin:0;color:var(--text);font-size:18px;font-weight:800}
+  .modal .mclose{width:34px;height:34px;border-radius:50%;background:var(--card2);color:var(--muted);display:flex;align-items:center;justify-content:center;font-size:18px;cursor:pointer;transition:.15s;border:none}
+  .modal .mclose:hover{background:#3a2226;color:var(--red);transform:rotate(90deg)}
+  .imgprev{width:100%;max-height:220px;object-fit:contain;background:#0f1419;border-radius:12px;margin:10px 0}
+  .toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%) translateY(10px);background:linear-gradient(120deg,#16303f,#1d3a4a);color:#eaf6fb;padding:11px 20px;border-radius:24px;font-size:13px;opacity:0;transition:.3s;z-index:99;box-shadow:0 8px 24px rgba(0,0,0,.28)}
+  .toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+  .food-pick{display:flex;flex-wrap:wrap;gap:8px;margin-top:8px;max-height:180px;overflow:auto;padding:2px}
+  .food-pick .fi{background:var(--card2);border:1.5px solid var(--line);border-radius:13px;padding:7px 11px;font-size:12px;cursor:pointer;transition:.15s;display:flex;flex-direction:column;gap:1px;min-width:96px}
+  .food-pick .fi:hover{border-color:var(--ice);background:#13242f;transform:translateY(-2px);box-shadow:0 4px 10px rgba(111,211,255,.18)}
+  .food-pick .fi b{color:var(--ice2);font-size:11px}
+  .food-pick .fi span{display:block;font-size:10px;color:var(--muted)}
+  .food-pick .fi.brand{background:#0e1f2b;border-color:#1d3a4a}
+  .food-pick .fi.brand:hover{border-color:var(--ice2);background:#13242f;box-shadow:0 4px 10px rgba(111,211,255,.18)}
+  .food-pick .fi.brand b{color:#9fe3ff}
+  .food-pick .fi.brand span{color:#6f97ad}
+  .food-pick .cat-h{flex:1 1 100%;width:100%;font-weight:800;font-size:13px;color:var(--ice2);margin:10px 0 2px;padding:4px 8px;border-left:3px solid var(--ice);background:rgba(111,211,255,.07);border-radius:0 8px 8px 0}
+  .food-pick .cat-h:first-child{margin-top:0}
+  /* 食物库 Tab */
+  .tab-bar{display:flex;gap:8px;flex-wrap:wrap}
+  .tab{background:var(--card2);border:1.5px solid var(--line);border-radius:20px;padding:7px 16px;font-size:13px;cursor:pointer;transition:.15s;color:var(--muted);font-weight:600}
+  .tab:hover{border-color:var(--violet);color:var(--violet2)}
+  .tab.on{background:var(--grad-main);border-color:transparent;color:#0a1430;font-weight:700;box-shadow:0 3px 10px rgba(124,92,255,.32)}
+  .chart-box{height:220px}
+  /* 今日仪表盘 */
+  .today-bar{background:linear-gradient(135deg,#10202b 0%,#0e1c26 55%,#0f1f2c 100%);border:1px solid var(--line);
+    border-radius:22px;padding:20px 22px;margin-bottom:18px;display:flex;flex-wrap:wrap;gap:20px;align-items:center;box-shadow:var(--shadow);transition:.22s}
+  .ring-wrap{position:relative;width:120px;height:120px;flex-shrink:0}
+  .ring-center{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center}
+  .ring-center .num{font-size:26px;font-weight:800;color:var(--ice2);line-height:1}
+  .ring-center .lab{font-size:10px;color:var(--muted);margin-top:2px}
+  .today-info{flex:1;min-width:240px}
+  .today-info .ti-title{font-size:13px;color:var(--muted);margin-bottom:8px}
+  .meter{margin:7px 0}
+  .meter .ml{display:flex;justify-content:space-between;font-size:11.5px;color:var(--muted);margin-bottom:3px}
+  .meter .ml b{color:var(--text);font-weight:800}
+  .meter .bar{height:10px;border-radius:6px;background:#0a0f14;overflow:hidden}
+  .meter .fill{height:100%;border-radius:6px;transition:width .4s ease}
+  .f-burn{background:linear-gradient(90deg,#4fe6c2 0%,#2bd3c0 50%,#159e7c 100%)}
+  .f-intake{background:linear-gradient(90deg,#b6ecff 0%,#9fe3ff 45%,#6fd3ff 100%)}
+  .f-sport{background:linear-gradient(90deg,#9fc4ff 0%,#6aa8ff 50%,#3f7fe0 100%)}
+  .f-bmi{background:linear-gradient(90deg,#4fe6c2 0%,#7fd3e8 50%,#6aa8ff 100%)}
+  .today-bar .big{font-size:22px;font-weight:800;color:var(--ice2);line-height:1.1}
+  .today-bar .sub{font-size:11.5px;color:var(--muted);margin-bottom:2px}
+  .today-bar .def{font-size:24px;font-weight:800}
+  .daycards{display:grid;grid-template-columns:repeat(auto-fill,minmax(310px,1fr));gap:16px}
+  .daycard{border:1px solid var(--line);border-radius:var(--radius);padding:16px;background:var(--card);position:relative;box-shadow:var(--shadow);transition:.2s}
+  .daycard:hover{box-shadow:var(--shadow-hover);transform:translateY(-2px);border-color:#36404d}
+  .daycard.warn{border-color:var(--warnb);background:linear-gradient(135deg,#13242f,#101e29);
+    box-shadow:0 4px 14px rgba(111,211,255,.18)}
+  /* 当前查看日期高亮 */
+  .daycard.viewing{border-color:var(--green);box-shadow:0 0 0 2px rgba(79,230,194,.25),0 4px 14px rgba(79,230,194,.15)}
+  /* ===== 日期导航条 ===== */
+  .date-nav{display:flex;gap:8px;align-items:center;justify-content:space-between;
+    background:var(--bg2);border:1px solid var(--line);border-radius:12px;padding:8px 10px;margin-bottom:14px}
+  .dn-btn{flex:1;padding:9px 6px;border:1px solid var(--line);border-radius:10px;background:#0e1f2b;
+    color:var(--ice2);font-size:13px;font-weight:700;cursor:pointer;transition:.15s}
+  .dn-btn:active{transform:scale(.97);background:#132736}
+  .dn-today{flex:1.4;padding:9px 6px;border:1px solid var(--green-d);border-radius:10px;background:rgba(39,211,168,.12);
+    color:var(--green2);font-size:13px;font-weight:800;cursor:pointer;text-align:center;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  @media(max-width:768px){.date-nav{position:sticky;top:8px;z-index:30}}
+  .daycard .dh{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px}
+  .daycard .dh .d{font-weight:800;font-size:14px;border:1px solid #1d3a4a;border-radius:9px;padding:5px 9px;background:#0e1f2b;color:var(--ice2)}
+  .daycard .grid2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+  .daycard .blk{background:var(--bg2);border-radius:11px;padding:9px 10px;border:1px solid var(--line)}
+  .daycard .blk label{font-size:11px;color:var(--muted);display:block;margin-bottom:4px;font-weight:600}
+  .daycard .blk input,.daycard .blk select{width:100%;border:1px solid var(--line);border-radius:9px;padding:6px;font-size:12px;background:var(--bg2);color:var(--text)}
+  .daycard .meal{margin-top:10px;padding:10px;background:var(--bg2);border-radius:11px;border:1px solid var(--line)}
+  .daycard .meal+.meal{margin-top:8px}
+  .daycard .meal .mt{font-size:12.5px;font-weight:800;color:var(--ice2);display:flex;justify-content:space-between;align-items:center}
+  .daycard .meal .mbtn{margin-top:6px}
+  .daycard .sport-row{display:grid;grid-template-columns:1.3fr .7fr;gap:10px;margin-top:10px}
+  .daycard .defbox{margin-top:12px;text-align:center;background:linear-gradient(135deg,#0e1f2b 0%,#101e29 60%,#0e1f2b 100%);border-radius:14px;padding:12px;border:1px solid #1d3a4a;transition:.22s}
+  .daycard .defbox .v{font-size:24px;font-weight:800}
+  .daycard .defbox .l{font-size:11.5px;color:var(--muted)}
+  .win-btns{display:flex;gap:8px;margin-top:6px}
+  .win-btns button{flex:1;padding:7px;font-size:12px;border-radius:10px;box-shadow:none}
+  .win-ok{background:var(--card2);color:var(--green2);border:1.5px solid #1f7f63}
+  .win-bad{background:var(--card2);color:#ff9aa1;border:1.5px solid #5a3138}
+  .win-ok.on{background:linear-gradient(120deg,var(--green2),var(--green-d));color:#04221b;border-color:transparent}
+  .win-bad.on{background:linear-gradient(120deg,#ff7a85,var(--red));color:#fff;border-color:transparent}
+  .add-row{margin-bottom:14px;display:flex;flex-wrap:wrap;gap:8px}
+  .add-row .cta{background:var(--grad-main);color:#0a1430;box-shadow:0 4px 14px rgba(124,92,255,.32);padding:11px 22px;font-size:14px}
+  .add-row .cta:hover{background:linear-gradient(120deg,var(--violet),var(--violet-d));transform:translateY(-1px);box-shadow:0 6px 18px rgba(124,92,255,.44)}
+  .meal-note{font-size:11px;color:var(--muted);margin-top:6px;line-height:1.5}
+  .search-bar{position:relative}
+  .search-bar input{padding-left:34px;width:100%}
+  .search-bar::before{content:"🔍";position:absolute;left:11px;top:50%;transform:translateY(-50%);font-size:13px;opacity:.6}
+  .section-label{font-size:12px;font-weight:600;color:var(--muted);margin:14px 0 6px;display:flex;align-items:center;gap:6px}
+  .section-label::after{content:"";flex:1;height:1px;background:var(--line)}
+  /* ===== 手机端适配（≤640px） ===== */
+  @media (max-width:640px){
+    body{font-size:15px}
+    header{padding:22px 18px;margin:10px;border-radius:18px}
+    header h1{font-size:20px}
+    header p{font-size:12px}
+    .wrap{padding:4px 8px 24px}
+    .card{padding:14px;margin-bottom:12px;border-radius:14px}
+    .card h2{font-size:15px}
+    /* 输入框≥16px，避免 iOS 聚焦自动放大 */
+    input,select,textarea{font-size:16px;padding:11px 12px;border-radius:11px}
+    button{padding:11px 16px;font-size:14px}
+    button.btn-sm{padding:8px 12px;font-size:13px}
+    .row{gap:8px}
+    .fld{width:100%}
+    .fld input,.fld select{width:100%}
+    /* 今日仪表盘竖向堆叠 */
+    .today-bar{flex-direction:column;align-items:stretch;gap:14px;padding:16px}
+    .today-info{min-width:0}
+    /* 汇总统计块两列 */
+    .summary{gap:10px}
+    .stat{flex:1 1 calc(50% - 5px);min-width:0;padding:12px}
+    .stat .v{font-size:20px}
+    /* 打卡卡片单列 */
+    .daycards{grid-template-columns:1fr}
+    .daycard .grid2{grid-template-columns:1fr 1fr;gap:8px}
+    .daycard .blk input,.daycard .blk select{padding:9px;font-size:15px}
+    .daycard .sport-row{grid-template-columns:1.4fr .6fr}
+    /* 食物选择卡片更大更易点 */
+    .food-pick{gap:9px;max-height:none;padding:2px}
+    .food-pick .fi{min-width:0;flex:1 1 calc(50% - 5px);padding:11px}
+    .food-pick .fi b{font-size:12px}
+    /* 弹窗接近全屏 */
+    .modal-bg{padding:0;align-items:stretch;background:rgba(16,24,40,.5)}
+    .modal{width:100%;min-height:100%;border-radius:0;padding:18px 16px 28px;animation:slideUp .25s ease}
+    @keyframes slideUp{from{transform:translateY(24px);opacity:.6}to{transform:translateY(0);opacity:1}}
+    .modal h3{font-size:18px}
+    .modal .mclose{width:40px;height:40px;font-size:20px}
+    .search-bar input{padding:12px 12px 12px 36px;font-size:16px}
+    .search-bar::before{left:12px;font-size:15px}
+    .add-row{gap:8px}
+    .add-row button{flex:1 1 auto}
+    .tag input{width:56px;padding:4px 6px;font-size:14px}
+    .chart-box{height:200px}
+    /* 文件选择按钮全宽易点 */
+    .ai-box input[type=file]{font-size:14px}
+  }
+  /* 超小屏（≤380px）进一步收紧 */
+  @media (max-width:380px){
+    .daycard .grid2{grid-template-columns:1fr}
+    .food-pick .fi{flex:1 1 100%}
+    .stat{flex:1 1 100%}
+  }
+  /* ===== 微信/WebApp 体验优化 ===== */
+  /* 禁止长按选中文字、长按弹出菜单、图片拖拽（避免误触） */
+  *{-webkit-tap-highlight-color:transparent;-webkit-touch-callout:none}
+  body,header,.card,.daycard,.food-pick,.tag{-webkit-user-select:none;user-select:none}
+  img{-webkit-user-drag:none}
+  /* 输入框/文本域允许选中复制（不影响填写） */
+  input,textarea{-webkit-user-select:text;user-select:text}
+  /* 禁用 iOS 橡皮筋回弹导致的页面整体拉动 */
+  html,body{position:relative;width:100%;overflow-x:hidden}
+  /* 适配刘海屏/底部安全区 */
+  header{margin-top:env(safe-area-inset-top,0)}
+  .wrap{padding-bottom:calc(30px + env(safe-area-inset-bottom,0))}
+  .toast{bottom:calc(24px + env(safe-area-inset-bottom,0))}
+  /* 当以 WebApp(添加到主屏幕)方式打开时，满屏无地址栏 */
+  @media (display-mode:standalone){
+    header{margin-top:max(env(safe-area-inset-top),8px)}
+  }
+  /* ===== file:// 协议提示条 ===== */
+  .file-hint{display:flex;align-items:center;gap:8px;flex-wrap:wrap;
+    background:linear-gradient(135deg,#2a1a10,#3a2010);border:1px solid rgba(255,160,60,.25);
+    border-radius:12px;padding:10px 14px;margin-bottom:12px;color:#ffcc80;font-size:12.5px;line-height:1.5}
+  .file-hint b{color:#fff}
+  /* ===== 移动端底部导航栏 ===== */
+  .mobile-nav{display:none;position:fixed;bottom:0;left:0;right:0;z-index:100;
+    background:rgba(14,24,34,.94);backdrop-filter:blur(18px);-webkit-backdrop-filter:blur(18px);
+    border-top:1px solid rgba(255,255,255,.08);
+    padding:6px 8px calc(6px + env(safe-area-inset-bottom,0));
+    display:flex;justify-content:space-around;align-items:center;
+  }
+  .mn-item{display:flex;flex-direction:column;align-items:center;gap:2px;
+    text-decoration:none;color:var(--muted);font-size:10px;font-weight:600;
+    padding:6px 10px;border-radius:10px;transition:.15s;min-width:52px;
+  }
+  .mn-item:active{background:rgba(255,255,255,.06)}
+  .mn-item.active{color:var(--green2)}
+  .mn-icon{font-size:20px;line-height:1}
+  .mn-label{font-size:10px;letter-spacing:.3px}
+  /* 桌面端隐藏底部导航（≥769px） */
+  @media (min-width:769px){.mobile-nav{display:none!important}}
+  @media (max-width:768px){
+    .mobile-nav{display:flex}
+    .wrap{padding-bottom:calc(80px + env(safe-area-inset-bottom,0))}
+  }
+  /* ===== BMI 独立看板 ===== */
+  .bmi-ref{display:flex;flex-wrap:wrap;gap:12px;font-size:11.5px;color:var(--muted)}
+  .bmi-ref span{display:inline-flex;align-items:center;gap:5px}
+  .bmi-ref i{width:10px;height:10px;border-radius:3px;display:inline-block}
+  .bmi-target{background:linear-gradient(120deg,#1a1530,#132030);border:1px solid var(--violet-line);border-radius:16px;padding:14px 16px;margin-bottom:14px;box-shadow:0 4px 14px rgba(124,92,255,.12)}
+  .bmi-target .bt-title{font-size:13px;font-weight:800;color:var(--violet2);margin-bottom:8px}
+  .bmi-target .bt-range{font-size:22px;font-weight:800;color:var(--text);display:flex;align-items:baseline;gap:8px}
+  .bmi-target .bt-range .bt-min,.bmi-target .bt-range .bt-max{color:var(--green2)}
+  .bmi-target .bt-range .bt-arrow{color:var(--muted);font-weight:400}
+  .bmi-target .bt-range .bt-unit{font-size:12px;color:var(--muted);font-weight:600}
+  .bmi-target .bt-sub{font-size:12px;color:var(--muted);margin-top:6px;line-height:1.6}
+  .bmi-list{display:flex;flex-direction:column;gap:6px;max-height:340px;overflow:auto}
+  .bmi-row{display:grid;grid-template-columns:96px 52px 48px 1fr;align-items:center;gap:8px;
+    background:var(--bg2);border:1px solid var(--line);border-radius:10px;padding:7px 10px;font-size:12px}
+  .bmi-row .bmi-d{color:var(--muted);font-variant-numeric:tabular-nums}
+  .bmi-row .bmi-v{font-weight:800;font-size:13px;text-align:right}
+  .bmi-row .bmi-c{font-weight:600;text-align:center;font-size:11.5px}
+  .bmi-row .bmi-bar{height:8px;border-radius:5px;background:#0c0f14;overflow:hidden}
+  .bmi-row .bmi-bar span{display:block;height:100%;border-radius:5px;transition:width .4s ease}
+  @media (max-width:640px){
+    .bmi-row{grid-template-columns:84px 46px 42px 1fr;gap:6px;padding:6px 8px}
+  }
+  /* 减肥方案卡片 */
+  .plan-nav{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:12px}
+  .plan-nav .pn{cursor:pointer;border:1.5px solid var(--line);background:var(--card2);color:var(--text);font-size:12.5px;font-weight:700;padding:7px 11px;border-radius:999px;transition:.15s;font-family:inherit}
+  .plan-nav .pn:hover{border-color:var(--violet)}
+  .plan-nav .pn.on{background:var(--violet);border-color:var(--violet);color:#fff}
+  .plan-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:12px;margin-bottom:14px}
+  .plan-box{background:var(--card2);border:1.5px solid var(--line);border-radius:14px;padding:12px 14px}
+  .plan-t{font-weight:800;color:var(--violet2);font-size:13.5px;margin-bottom:6px}
+  .plan-c{font-size:13px;line-height:1.7;color:var(--text)}
+  .plan-c b{color:var(--green)}
+  .plan-h{font-weight:800;font-size:14px;margin:14px 0 6px;color:var(--text);border-left:3px solid var(--violet);padding-left:8px}
+  .plan-tbl{width:100%;border-collapse:collapse;font-size:12.5px;margin-top:4px}
+  .plan-tbl th,.plan-tbl td{border:1px solid var(--line);padding:7px 9px;text-align:center}
+  .plan-tbl th{background:var(--card2);color:var(--violet2);font-weight:700}
+  .plan-tbl tr:nth-child(even) td{background:rgba(124,92,255,.05)}
+  @media (max-width:640px){
+    .plan-grid{grid-template-columns:1fr}
+  }
+/* ===== 云端同步（Gist） ===== */
+.sync-row{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-top:10px}
+.sync-row input{background:var(--card2);border:1px solid #2a3a48;color:var(--txt);border-radius:9px;padding:8px 10px;font-size:13px}
+.sync-row .f-tok{width:300px}
+.sync-row .f-id{width:180px}
+.sync-stat{font-size:12px;color:var(--muted);margin-top:8px}
+.sync-stat b{color:var(--green2)}
+.sync-stat .err{color:#ff9aa1}
+</style>
+</head>
+<body>
+<header>
+  <h1><span class="logo">🥗</span> 16:8 减脂打卡</h1>
+  <p>拍照/输入三餐 → 自动算热量 · 步数推活动系数 · 实时热量缺口</p>
+</header>
+
+<!-- 激励 banner（纯文字，无图片） -->
+<div class="motiv" style="margin:14px">
+  <div>
+    <div class="m-t">💪 坚持 16:8，遇见更轻盈的自己</div>
+    <div class="m-s">均衡三餐 + 规律进食窗口，比节食更有效</div>
+  </div>
+</div>
+</div>
+
+<div class="wrap">
+
+  <!-- file:// 协议提示条（直接双击 HTML 打开时显示） -->
+  <div class="file-hint" id="fileHint" style="display:none">
+    <span>⚠️ 你是直接双击 HTML 打开的，AI 拍照识别、下载备份等功能受限</span>
+    <span style="font-size:11px;opacity:.8">请改用 <b>「减脂打卡.bat」</b> 启动器打开，即可获得完整功能</span>
+    <button onclick="this.parentElement.remove()" style="background:none;border:none;color:inherit;font-size:16px;cursor:pointer;padding:0 4px">✕</button>
+  </div>
+
+  <!-- 个人参数 -->
+  <div class="card" id="sec-params">
+    <h2>① 个人参数（活动系数自动算）</h2>
+    <div class="row">
+      <div class="fld"><label>性别</label><select id="p_sex"><option value="male">男</option><option value="female">女</option></select></div>
+      <div class="fld"><label>出生年份</label>
+        <select id="p_year"></select>
+      </div>
+      <div class="fld"><label>身高(cm)</label><input id="p_h" type="number" value="183" style="width:80px" onchange="recalcAll()"></div>
+      <div class="fld"><label>体重(今日,kg)</label><input id="p_w" type="number" step="0.1" value="93.0" style="width:90px" onchange="recalcAll()"></div>
+      <div class="fld"><label>目标日缺口(kcal)</label><input id="p_goal" type="number" value="500" style="width:90px" onchange="setGoal()"></div>
+      <div class="fld"><label>目标体重(kg)</label><input id="p_gw" type="number" step="0.1" value="82" style="width:80px" onchange="recalcAll()"></div>
+    </div>
+    <div class="row" style="margin-top:10px;align-items:center">
+      <div style="font-size:12px;color:var(--muted)">活动系数（按步数自动推定）：</div>
+      <div id="actBadge" style="font-weight:700;color:var(--green)"></div>
+      <div style="font-size:12px;color:var(--muted);margin-left:10px">当前 BMI：</div>
+      <div id="bmiBadge" style="font-weight:700"></div>
+      <button class="ghost btn-sm" onclick="recalcAll()">重新计算</button>
+    </div>
+    <div class="hint" id="paramHint"></div>
+  </div>
+
+  <!-- 今日快捷卡 -->
+  <div class="today-bar" id="todayBar"></div>
+
+  <!-- 每日打卡 -->
+  <div class="card" id="sec-checkin">
+    <h2>② 每日打卡</h2>
+    <div class="date-nav" id="dateNav">
+      <button class="dn-btn" onclick="navDate(-1)">‹ 前一天</button>
+      <button class="dn-today" id="dnLabel" onclick="goToday()">—</button>
+      <button class="dn-btn" onclick="navDate(1)">后一天 ›</button>
+    </div>
+    <div class="add-row">
+      <button class="cta" onclick="addToday()">＋ 添加今日打卡</button>
+      <button class="ghost" onclick="addDatePrompt()">+ 添加指定日期</button>
+      <button class="ghost" onclick="exportJSON()">导出备份(JSON)</button>
+      <button class="ghost" onclick="document.getElementById('imp').click()">导入备份</button>
+      <input id="imp" type="file" accept="application/json" style="display:none" onchange="importJSON(this)">
+      <button class="danger" onclick="clearAll()">清空全部</button>
+    </div>
+    <div class="daycards" id="cards"></div>
+    <div class="hint">预警：摄入超标或热量缺口为负时，卡片变橙红。运动选「项目+填分钟」，羽毛球等轮歇运动已按有效时间折算。</div>
+  </div>
+
+  <!-- AI 配置 -->
+  <div class="card">
+    <h2>③ AI 拍照识别设置</h2>
+    <div class="row">
+      <div class="fld"><label>DashScope API Key</label><input id="ai_key" type="password" placeholder="sk-..." style="width:280px"></div>
+      <div class="fld"><label>模型</label><select id="ai_model">
+        <option value="qwen-vl-max">qwen-vl-max（推荐）</option>
+        <option value="qwen2.5-vl-72b-instruct">qwen2.5-vl-72b-instruct</option>
+        <option value="qwen2.5-vl-7b-instruct">qwen2.5-vl-7b-instruct</option>
+      </select></div>
+      <button class="ghost" onclick="saveAI()">保存密钥</button>
+      <a class="small-link" href="https://dashscope.console.aliyun.com/" target="_blank">去开通/获取Key</a>
+    </div>
+    <div class="hint">在阿里云百炼控制台开通「视觉理解」模型即得 Key（注册送免费额度，无需信用卡）。密钥仅存你本机浏览器。</div>
+  </div>
+
+  <!-- 云端同步（Gist） -->
+  <div class="card">
+    <h2>③-2 云端同步（多设备/外网）</h2>
+    <div class="hint">用 GitHub Gist 把打卡数据存到云端。配置一次后，本机改动会自动上传；换手机/电脑打开本页会先下载云端数据再合并。Gist 设为「私密」即可，仅你自己可见。</div>
+    <div class="sync-row">
+      <input id="gist_token" class="f-tok" type="password" placeholder="GitHub Token（仅 gist 权限）">
+      <input id="gist_id" class="f-id" placeholder="Gist ID（首次留空自动建）">
+      <button class="ghost" onclick="saveSyncCfg()">保存配置</button>
+      <button class="cta" onclick="pushCloud(true)">↑ 立即上传</button>
+      <button class="ghost" onclick="pullCloud(true)">↓ 下载合并</button>
+      <button class="ghost" onclick="autoSyncToggle()" id="autoBtn">自动同步：关</button>
+    </div>
+    <div class="sync-stat" id="syncStat">未配置。需先在 github.com → Settings → Developer settings → Personal access tokens 生成一个勾选 gist 权限的 token。</div>
+  </div>
+
+  <!-- 汇总 -->
+  <div class="card" id="sec-dashboard">
+    <h2>④ 汇总看板</h2>
+    <div class="summary" id="summary"></div>
+    <div style="margin-top:12px;font-weight:600;font-size:13px">近 14 天体重 & 热量缺口趋势</div>
+    <div class="chart-box"><canvas id="chart"></canvas></div>
+  </div>
+
+  <!-- BMI 独立看板 -->
+  <div class="card">
+    <h2>⑤ BMI 汇总看板（每日浮动）</h2>
+    <div id="bmiBoard"></div>
+    <div class="hint">BMI = 体重(kg) ÷ 身高(m)²，按你每一天填的体重自动计算。绿色区间为健康范围，向下浮动说明在变瘦，向上则需注意。身高取个人参数①中的身高。</div>
+  </div>
+
+  <div class="card" id="sec-food">
+    <h2>⑤ 食物库（内置 + 外食榜）</h2>
+    <div class="tab-bar" style="margin-bottom:10px">
+      <button class="tab on" id="ft_all" onclick="setFoodTab('all')">全部</button>
+      <button class="tab" id="ft_builtin" onclick="setFoodTab('builtin')">🥗 内置库</button>
+      <button class="tab" id="ft_fastfood" onclick="setFoodTab('fastfood')">🍔 外食榜</button>
+    </div>
+    <div class="search-bar" style="max-width:320px">
+      <input id="foodSearch" placeholder="搜索：鸡蛋 / jidan / jd / 麦当劳 / mdl / kfc / 薯条" oninput="renderFoodPick(this.value)">
+    </div>
+    <div class="food-pick" id="foodPick" style="margin-top:12px"></div>
+    <div class="hint">💡 搜索食物后点击可加入当前编辑的餐次。内置库按「克数」记，外食榜按「份数」记（如 1 个麦辣鸡腿堡）。外食榜数据来自各品牌官网/公开测评，比内置估算更准。</div>
+  </div>
+
+  <!-- 减肥方案 -->
+  <div class="card" id="sec-plan">
+    <h2>⑥ 我的减肥方案（16:8 轻断食法）</h2>
+    <div class="plan-nav" id="planNav">
+      <button class="pn on" onclick="planToggle('pn1',this)">📋 计划总览</button>
+      <button class="pn" onclick="planToggle('pn2',this)">🍽 每日食谱</button>
+      <button class="pn" onclick="planToggle('pn3',this)">🛒 食谱清单</button>
+      <button class="pn" onclick="planToggle('pn4',this)">⚖ 称重提醒</button>
+      <button class="pn" onclick="planToggle('pn5',this)">📄 总方案要点</button>
+      <button class="pn" onclick="planToggle('pn6',this)">📑 完整版要点</button>
+    </div>
+
+    <div class="plan-detail" id="pn1" style="display:block">
+      <div class="plan-h">进食窗</div>
+      <div class="plan-c"><b>9:00 ~ 17:00</b>（8 小时），窗口外只喝水 / 无糖茶 / 黑咖啡。最晚不超过 18:00。夜宵 = 违规（头号禁忌）。</div>
+      <div class="plan-h">每日热量与早午餐结构（约 1350~1850 kcal）</div>
+      <div class="plan-c">早午餐吃全天大部分热量，蛋白质（蛋/奶/肉/豆）拉满；晚餐取消或极简，夜宵杜绝。</div>
+      <div class="plan-h">运动（保底）</div>
+      <div class="plan-c"><b>周六羽毛球雷打不动</b>（约 500~700 kcal）；工作日步数从 2000 阶梯到 4000→6000；居家靠墙静蹲/提踵/平板支撑。</div>
+      <div class="plan-h">12 周节奏</div>
+      <table class="plan-tbl">
+        <tr><th>阶段</th><th>周次</th><th>体重目标</th><th>步数</th><th>重点</th></tr>
+        <tr><td>适应期</td><td>1~2</td><td>93→90.5</td><td>4000</td><td>守住窗口、戒夜宵</td></tr>
+        <tr><td>减脂期</td><td>3~8</td><td>90.5→85.8</td><td>5000→6000</td><td>早午餐结构+微训练</td></tr>
+        <tr><td>平台期</td><td>9~10</td><td>85.8→84.3</td><td>7000</td><td>步数加码、查隐形热量</td></tr>
+        <tr><td>巩固期</td><td>11~12</td><td>84.3→82.0</td><td>7000</td><td>固化习惯防反弹</td></tr>
+      </table>
+      <div class="plan-h">三条铁律</div>
+      <div class="plan-c">① 窗口外不进食，夜宵头号禁忌　② 早午餐蛋白质拉满　③ 每周 1 次欺骗餐（周六）</div>
+      <div class="plan-h">监测</div>
+      <div class="plan-c">每周一早晨空腹、排便后称重，记趋势不记单日；每 2 周量腰围（目标&lt;88cm）和腿围，围度下降常早于体重。</div>
+    </div>
+
+    <div class="plan-detail" id="pn2">
+      <div class="plan-h">工作日标准食谱（约 1350~1400 kcal）</div>
+      <table class="plan-tbl">
+        <tr><th>时间</th><th>餐次</th><th>吃什么</th><th>热量</th></tr>
+        <tr><td>9:00</td><td>早餐+咖啡</td><td>冰美式(无糖)或拿铁(奶约200ml)+水煮蛋2+全麦2片</td><td>450~500</td></tr>
+        <tr><td>11:30</td><td>午餐(公司)</td><td>米饭1.5拳+荤1.5掌(去皮鸡/瘦肉/鱼)+蔬菜2拳；不喝甜饮</td><td>750</td></tr>
+        <tr><td>16:00</td><td>加餐</td><td>无糖酸奶/苹果1个/茶叶蛋 三选一</td><td>150</td></tr>
+        <tr><td>17:00后</td><td>断食</td><td>仅饮水/无糖茶；可含无糖薄荷糖或温无糖豆浆</td><td>0</td></tr>
+      </table>
+      <div class="plan-h">羽毛球日食谱（周六，约 2050 kcal）</div>
+      <table class="plan-tbl">
+        <tr><th>时间</th><th>餐次</th><th>吃什么</th><th>热量</th></tr>
+        <tr><td>9:00</td><td>早餐</td><td>同标准日（蛋2+全麦2片+牛奶）</td><td>480</td></tr>
+        <tr><td>10:30</td><td>加餐</td><td>香蕉1根（打球前补碳水）</td><td>100</td></tr>
+        <tr><td>12:30</td><td>午餐</td><td>杂粮饭2拳+瘦肉1.5掌+蔬菜2拳（主食多半拳）</td><td>850</td></tr>
+        <tr><td>18:30</td><td>运动前</td><td>香蕉1根+全麦1片（开打前1小时吃完，算运动补给）</td><td>200</td></tr>
+        <tr><td>20:30</td><td>运动后</td><td>蛋白粉1杯(30g)或牛奶250ml（防宵夜）</td><td>200</td></tr>
+      </table>
+      <div class="plan-h">咖啡与牛奶</div>
+      <div class="plan-c">冰美式(无糖)✅零热量随便喝；自做拿铁✅但奶已算当日奶类，早餐别再单喝牛奶；乳糖不耐换无糖豆浆；公司甜饮换白水/无糖茶。</div>
+      <div class="plan-h">公司午餐「三拳法」</div>
+      <div class="plan-c">主食1.5~2拳（杂粮更好）｜荤菜1.5~2掌（鸡鱼虾瘦肉去皮）｜蔬菜2拳以上（绿叶菜/冬瓜/番茄）｜汤/饮料不喝。</div>
+      <div class="plan-h">采购清单</div>
+      <div class="plan-c">主食：全麦面包、香蕉、苹果｜蛋白：鸡蛋、牛奶/无糖豆浆粉、无糖酸奶、蛋白粉(周六)｜其他：原味坚果(可选)、黑咖啡、茶包。</div>
+    </div>
+
+    <div class="plan-detail" id="pn3">
+      <div class="plan-h">方案 B：取消加餐（只吃早+午，约 1450 kcal）</div>
+      <table class="plan-tbl">
+        <tr><th>时间</th><th>餐次</th><th>吃什么</th><th>热量</th></tr>
+        <tr><td>9:00</td><td>早餐+咖啡</td><td>冰美式/拿铁+水煮蛋2+全麦3片+牛奶/豆浆1杯</td><td>600</td></tr>
+        <tr><td>11:30</td><td>午餐</td><td>米饭2拳+荤2掌+蔬菜2拳（多吃半份撑到傍晚）</td><td>850</td></tr>
+        <tr><td>16:30</td><td>替代</td><td>不喝不吃，改温水/无糖茶+站立走动5分钟</td><td>0</td></tr>
+      </table>
+      <div class="plan-c">先用方案 A 跑 1 周，若加餐让你总惦记吃再切 B；扛不住允许 1 个茶叶蛋(70kcal)救急。</div>
+      <div class="plan-h">周日（休息日）</div>
+      <div class="plan-c">进食窗同 9:00~17:00；不强制运动，建议散步 30 分；周日不安排欺骗餐（放周六）。</div>
+      <div class="plan-h">执行要点</div>
+      <div class="plan-c">① 蛋白质是核心，每餐有蛋/奶/肉/豆　② 下午3~4点最危险，提前吃加餐　③ 窗口外饿了先喝水300ml等15分　④ 别把0卡饮料当水喝　⑤ 称重看周趋势别盯单日。</div>
+    </div>
+
+    <div class="plan-detail" id="pn4">
+      <div class="plan-h">每周一必做三件事</div>
+      <div class="plan-c">1) 早上空腹、排便后称重（起始基准 93.0kg，以实称为准）<br>2) 填「每周汇总」第1周"周一体重kg"列<br>3) 每晚睡前填当日「每日打卡」行（早餐/午餐/加餐/步数/体重）</div>
+      <div class="plan-h">本周执行要点（适应期·1~2周）</div>
+      <div class="plan-c">① 守住 9:00~17:00 窗口，夜宵=违规　② 早午餐蛋白质拉满　③ 周六羽毛球雷打不动　④ 工作日步数目标 4000，养成睡前填表习惯</div>
+      <div class="plan-h">打卡清单</div>
+      <div class="plan-c">☐ 今日空腹称重记下kg　☐ 周一体重kg已填(核对93.0)　☐ 今日打卡行已补　☐ 每晚睡前填当日行</div>
+    </div>
+
+    <div class="plan-detail" id="pn5">
+      <div class="plan-h">现状与可行性</div>
+      <div class="plan-c">男/183cm/93kg/BMI 27.8（大基数·久坐）；基础代谢约2050，日常消耗约2400~2500。16:8 用"压缩进食窗"替代运动制造缺口，从规则上掐断夜宵。</div>
+      <div class="plan-h">外卖/食堂替换清单</div>
+      <table class="plan-tbl">
+        <tr><th>想吃</th><th>替换</th></tr>
+        <tr><td>黄焖鸡米饭</td><td>去皮鸡肉+多青菜+米饭减半</td></tr>
+        <tr><td>牛肉面</td><td>面条减半+加卤蛋/牛肉+不喝汤</td></tr>
+        <tr><td>盖浇饭</td><td>菜多饭少，汤汁不拌饭</td></tr>
+        <tr><td>麻辣烫</td><td>清汤底+瘦肉+豆腐+大量蔬菜，不点丸子</td></tr>
+      </table>
+      <div class="plan-h">居家微量训练（不占整块时间）</div>
+      <div class="plan-c">每30分钟起身：靠墙静蹲3×40s+坐姿提踵3×20+平板支撑3×30s；能站立办公2小时更佳。大基数避免跑步/跳绳，以自重为主。</div>
+      <div class="plan-h">风险与提示</div>
+      <div class="plan-c">大基数避跑步/跳绳伤膝；下午严重低血糖头晕则早餐加个蛋，勿硬扛；有基础病请遵医嘱。</div>
+    </div>
+
+    <div class="plan-detail" id="pn6">
+      <div class="plan-h">12 周节奏（完整版）</div>
+      <table class="plan-tbl">
+        <tr><th>阶段</th><th>周次</th><th>目标体重</th><th>重点任务</th></tr>
+        <tr><td>适应期</td><td>1~2</td><td>91~92kg</td><td>守住窗口，戒夜宵，不挨饿</td></tr>
+        <tr><td>减脂期</td><td>3~8</td><td>每周-0.6kg</td><td>严格早午餐结构+步数6000+微训练</td></tr>
+        <tr><td>平台期</td><td>9~10</td><td>约84kg</td><td>步行提到8000，查隐形热量</td></tr>
+        <tr><td>巩固期</td><td>11~12</td><td>稳82kg</td><td>固化习惯，防反弹</td></tr>
+      </table>
+      <div class="plan-h">增量（若第4周仍不掉秤）</div>
+      <div class="plan-c">步数提到8000或午休散步延到20分；增加每周2次居家循环：深蹲3×15+臀桥3×15+俯卧撑3×10（约10分）；晨醒10分开合跳/高抬腿（膝无不适时）。</div>
+      <div class="plan-h">三条铁律（防反弹）</div>
+      <div class="plan-c">① 窗口外不进食，夜宵头号禁忌　② 早午餐蛋白质拉满　③ 每周1次欺骗餐（周六午餐）防代谢适应与心理崩盘。</div>
+    </div>
+
+    <div class="plan-grid">
+      <div class="plan-box">
+        <div class="plan-t">🎯 目标</div>
+        <div class="plan-c">男 / 183cm / 93kg / BMI 27.8（大基数）<br>12 周降至 <b>82kg</b>（BMI 24.5）；腰围 &lt; 88cm</div>
+      </div>
+      <div class="plan-box">
+        <div class="plan-t">🕘 进食窗</div>
+        <div class="plan-c"><b>9:00 ~ 17:00</b><br>窗口外只喝水 / 无糖茶 / 黑咖啡<br>夜宵 = 违规（头号禁忌）</div>
+      </div>
+      <div class="plan-box">
+        <div class="plan-t">💪 运动</div>
+        <div class="plan-c"><b>周六羽毛球雷打不动</b><br>碎片：午休散步 + 多走一站<br>大基数避跑步/跳绳，以快走、自重为主</div>
+      </div>
+      <div class="plan-box">
+        <div class="plan-t">🍰 欺骗餐</div>
+        <div class="plan-c">每周 1 次，<b>放周六午餐</b><br>防代谢适应 + 心理崩盘</div>
+      </div>
+    </div>
+
+    <div class="plan-h">每日执行 SOP</div>
+    <div class="plan-c">
+      <b>工作日</b>：09:00 早餐（冰美式+水煮蛋2+全麦2片）→ 11:30 午餐（饭1.5拳+荤1.5掌+菜2拳）→ 16:00 加餐（酸奶/苹果/茶叶蛋三选一）→ 17:00 后断食<br>
+      <b>周六</b>：羽毛球日，开打前香蕉+全麦；运动后蛋白粉/牛奶<br>
+      <b>周日</b>：同窗口，散步 30 分，不安排欺骗餐<br>
+      <b>每周一</b>：空腹称重填周表，回顾上周达标情况
+    </div>
+
+    <div class="plan-h">12 周节奏（看趋势，别盯单日）</div>
+    <table class="plan-tbl">
+      <tr><th>阶段</th><th>周次</th><th>体重目标</th><th>步数目标</th><th>重点</th></tr>
+      <tr><td>适应期</td><td>1~2</td><td>93→90.5</td><td>4000</td><td>守住窗口、戒夜宵</td></tr>
+      <tr><td>减脂期</td><td>3~8</td><td>90.5→85.8</td><td>5000→6000</td><td>早午餐结构 + 微训练</td></tr>
+      <tr><td>平台期</td><td>9~10</td><td>85.8→84.3</td><td>7000</td><td>步数加码、查隐形热量</td></tr>
+      <tr><td>巩固期</td><td>11~12</td><td>84.3→82.0</td><td>7000</td><td>固化习惯防反弹</td></tr>
+    </table>
+
+    <div class="plan-h">三条铁律（防反弹）</div>
+    <div class="plan-c">① 窗口外不进食，夜宵头号禁忌　② 早午餐蛋白质拉满　③ 每周 1 次欺骗餐（周六）</div>
+    <div class="hint">方案已全部内置本页，点击上方按钮切换查看，无需联网或外部文件。数据存在本机浏览器，记得定期「导出备份」。</div>
+  </div>
+
+  <!-- 移动端底部导航栏（仅在≤768px显示） -->
+  <nav class="mobile-nav" id="mobileNav">
+    <a class="mn-item" href="#sec-checkin" onclick="navActive(this)">
+      <span class="mn-icon">📝</span><span class="mn-label">打卡</span>
+    </a>
+    <a class="mn-item" href="#sec-food" onclick="navActive(this)">
+      <span class="mn-icon">🍽</span><span class="mn-label">食物库</span>
+    </a>
+    <a class="mn-item" href="#sec-dashboard" onclick="navActive(this)">
+      <span class="mn-icon">📊</span><span class="mn-label">看板</span>
+    </a>
+    <a class="mn-item" href="#sec-plan" onclick="navActive(this)">
+      <span class="mn-icon">📋</span><span class="mn-label">方案</span>
+    </a>
+    <a class="mn-item" href="#sec-params" onclick="navActive(this)">
+      <span class="mn-icon">⚙</span><span class="mn-label">参数</span>
+    </a>
+  </nav>
+
+</div>
+
+<!-- 食物编辑弹窗 -->
+<div class="modal-bg" id="mealModal" onclick="if(event.target===this)closeMeal()">
+  <div class="modal">
+    <div class="mhead">
+      <h3 id="mealModalTitle">编辑餐次</h3>
+      <div class="mclose" title="关闭" onclick="closeMeal()">✕</div>
+    </div>
+
+    <div class="row">
+      <button onclick="openPhoto()">📷 拍照/上传识别(AI)</button>
+      <button class="ghost" onclick="manualAdd()">✎ 手写添加</button>
+    </div>
+
+    <div class="ai-box" id="aiBox">
+      <div>上传食物照片，AI 会识别菜品并<b style="color:var(--violet2)">估算每项克数</b>（依据盘/碗/罐等参照物 + 常见份量），自动匹配食物库并算热量。</div>
+      <div class="hint">📷 小技巧：拍照时把餐具/易拉罐等一同入镜，AI 估算克数更准；识别后可在「已添加」处手动微调克数。</div>
+      <input id="photoFile" type="file" accept="image/*" onchange="onPhoto(this)">
+      <img id="photoPrev" class="imgprev" style="display:none">
+      <div id="aiStatus" class="hint"></div>
+      <div id="aiFallback" style="display:none;margin-top:8px">
+        <div class="hint" style="color:var(--red)">未配置/未开通 AI，可手动勾选这餐吃了什么（看到照片凭记忆勾即可）：</div>
+        <div class="food-pick" id="aiFallbackPick"></div>
+      </div>
+    </div>
+
+    <div class="section-label">✅ 已添加（可改克数）</div>
+    <div id="mealTags"></div>
+
+    <div class="section-label" style="margin-top:16px">🔍 搜索添加食物（输入后显示结果）</div>
+    <div class="search-bar">
+      <input id="mealFoodSearch" placeholder="输入食物名开始搜索，如：鸡蛋 / 米饭 / 麦当劳 / kfc" oninput="renderMealFoodPick(this.value)">
+    </div>
+    <div class="food-pick" id="mealFoodPick"></div>
+
+    <div style="margin-top:16px;text-align:right">
+      <button onclick="closeMeal()">完成</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+/* ============ 内置中文食物库 ============ */
+/* kcal: 每100g热量; unit: 一份的常用量(克) 与 描述, 帮你对应实际吃的份 */
+const FOODS = {
+  /* ---- 主食 ---- */
+  "鸡蛋":{kcal:144,unit:50,desc:"1个约50g",cat:"🍚 主食·粗粮"}, "鸡蛋白":{kcal:52,unit:33,desc:"1个约33g",cat:"🍚 主食·粗粮"}, "茶叶蛋":{kcal:144,unit:50,desc:"1个约50g(卤制,热量同鸡蛋)",cat:"🍚 主食·粗粮"},
+  "全麦面包":{kcal:246,unit:35,desc:"1片约35g",cat:"🍚 主食·粗粮"}, "白面包":{kcal:265,unit:35,desc:"1片约35g",cat:"🍚 主食·粗粮"},
+  "米饭(熟)":{kcal:116,unit:150,desc:"1碗约150g",cat:"🍚 主食·粗粮"}, "杂粮饭(熟)":{kcal:120,unit:150,desc:"1碗约150g",cat:"🍚 主食·粗粮"},
+  "馒头":{kcal:223,unit:80,desc:"1个约80g",cat:"🍚 主食·粗粮"}, "面条(熟)":{kcal:110,unit:200,desc:"1碗约200g",cat:"🍚 主食·粗粮"}, "燕麦":{kcal:389,unit:40,desc:"干重1勺约40g",cat:"🍚 主食·粗粮"},
+  "红薯":{kcal:86,unit:150,desc:"1个中约150g",cat:"🍚 主食·粗粮"}, "玉米":{kcal:112,unit:150,desc:"1根约150g",cat:"🍚 主食·粗粮"}, "土豆":{kcal:77,unit:150,desc:"1个中约150g",cat:"🍚 主食·粗粮"}, "粉条":{kcal:338,unit:100,desc:"1碗约100g",cat:"🍚 主食·粗粮"},
+  /* ---- 水果 ---- */
+  "香蕉":{kcal:93,unit:120,desc:"1根约120g",cat:"🍎 水果"}, "苹果":{kcal:54,unit:180,desc:"1个约180g",cat:"🍎 水果"}, "橙子":{kcal:48,unit:180,desc:"1个约180g",cat:"🍎 水果"},
+  "葡萄":{kcal:43,unit:150,desc:"1串约150g",cat:"🍎 水果"}, "西瓜":{kcal:30,unit:200,desc:"1块约200g",cat:"🍎 水果"}, "蓝莓":{kcal:57,unit:100,desc:"1小盒约100g",cat:"🍎 水果"}, "草莓":{kcal:32,unit:100,desc:"约100g",cat:"🍎 水果"},
+  /* ---- 饮品/咖啡 ---- */
+  "牛奶":{kcal:54,unit:200,desc:"1杯约200g",cat:"🥤 饮品·咖啡"}, "脱脂奶":{kcal:35,unit:200,desc:"1杯约200g",cat:"🥤 饮品·咖啡"}, "无糖豆浆":{kcal:31,unit:200,desc:"1杯约200g",cat:"🥤 饮品·咖啡"},
+  "酸奶(无糖)":{kcal:59,unit:150,desc:"1杯约150g",cat:"🥤 饮品·咖啡"}, "拿铁":{kcal:50,unit:250,desc:"1杯约250g(含奶)",cat:"🥤 饮品·咖啡"}, "美式咖啡":{kcal:2,unit:240,desc:"1杯约240g(无糖无奶)",cat:"🥤 饮品·咖啡"}, "黑咖啡":{kcal:2,unit:240,desc:"1杯约240g(无糖无奶)",cat:"🥤 饮品·咖啡"}, "卡布奇诺":{kcal:60,unit:200,desc:"1杯约200g(含奶)",cat:"🥤 饮品·咖啡"},
+  "可乐":{kcal:43,unit:330,desc:"1罐约330g",cat:"🥤 饮品·咖啡"}, "啤酒":{kcal:43,unit:330,desc:"1罐约330g",cat:"🥤 饮品·咖啡"}, "奶茶":{kcal:120,unit:300,desc:"1杯约300g",cat:"🥤 饮品·咖啡"}, "果汁":{kcal:45,unit:250,desc:"1杯约250g",cat:"🥤 饮品·咖啡"},
+  /* ---- 运动饮料·补给（运动前后/中补给） ---- */
+  "运动饮料":{kcal:30,unit:500,desc:"1瓶约500g",cat:"🥛 运动饮料·补给"}, "宝矿力水特":{kcal:126,unit:500,desc:"1瓶约500ml",cat:"🥛 运动饮料·补给"}, "电解质水":{kcal:40,unit:500,desc:"1瓶约500ml",cat:"🥛 运动饮料·补给"}, "外星人电解质水":{kcal:36,unit:500,desc:"1瓶约500ml",cat:"🥛 运动饮料·补给"}, "佳得乐":{kcal:130,unit:600,desc:"1瓶约600ml",cat:"🥛 运动饮料·补给"}, "脉动":{kcal:98,unit:600,desc:"1瓶约600ml",cat:"🥛 运动饮料·补给"}, "尖叫":{kcal:100,unit:550,desc:"1瓶约550ml",cat:"🥛 运动饮料·补给"}, "红牛":{kcal:110,unit:250,desc:"1罐约250ml",cat:"🥛 运动饮料·补给"}, "魔爪能量":{kcal:120,unit:330,desc:"1罐约330ml",cat:"🥛 运动饮料·补给"}, "能量胶":{kcal:100,unit:32,desc:"1包约32g(运动中途)",cat:"🥛 运动饮料·补给"}, "运动盐丸":{kcal:10,unit:5,desc:"1粒约5g(补电解质)",cat:"🥛 运动饮料·补给"},
+  /* ---- 蛋白类 ---- */
+  "鸡胸肉":{kcal:133,unit:120,desc:"1块约120g",cat:"🍗 蛋白·肉蛋奶"}, "鸡腿肉(去皮)":{kcal:121,unit:120,desc:"1块约120g",cat:"🍗 蛋白·肉蛋奶"}, "鸡腿(带皮)":{kcal:209,unit:120,desc:"1块约120g",cat:"🍗 蛋白·肉蛋奶"},
+  "牛肉(瘦)":{kcal:125,unit:120,desc:"1份约120g",cat:"🍗 蛋白·肉蛋奶"}, "牛肉(肥)":{kcal:250,unit:120,desc:"1份约120g",cat:"🍗 蛋白·肉蛋奶"}, "猪肉(瘦)":{kcal:143,unit:120,desc:"1份约120g",cat:"🍗 蛋白·肉蛋奶"}, "五花肉":{kcal:518,unit:100,desc:"1份约100g",cat:"🍗 蛋白·肉蛋奶"}, "排骨":{kcal:264,unit:120,desc:"1份约120g",cat:"🍗 蛋白·肉蛋奶"},
+  "虾仁":{kcal:99,unit:100,desc:"1份约100g",cat:"🍗 蛋白·肉蛋奶"}, "鱼(清蒸)":{kcal:105,unit:120,desc:"1块约120g",cat:"🍗 蛋白·肉蛋奶"}, "三文鱼":{kcal:208,unit:100,desc:"1块约100g",cat:"🍗 蛋白·肉蛋奶"}, "带鱼":{kcal:127,unit:120,desc:"1段约120g",cat:"🍗 蛋白·肉蛋奶"},
+  "豆腐":{kcal:76,unit:120,desc:"1块约120g",cat:"🍗 蛋白·肉蛋奶"}, "豆干":{kcal:140,unit:80,desc:"几片约80g",cat:"🍗 蛋白·肉蛋奶"}, "鸡蛋羹":{kcal:90,unit:150,desc:"1碗约150g",cat:"🍗 蛋白·肉蛋奶"}, "煎蛋":{kcal:195,unit:50,desc:"1个约50g",cat:"🍗 蛋白·肉蛋奶"},
+  /* ---- 中式炒菜/快餐(自夹菜常见) ---- */
+  "红烧肉":{kcal:420,unit:80,desc:"约2块80g",cat:"🍲 菜肴·中西餐"}, "糖醋里脊":{kcal:280,unit:90,desc:"1份约90g",cat:"🍲 菜肴·中西餐"}, "宫保鸡丁":{kcal:180,unit:90,desc:"1份约90g",cat:"🍲 菜肴·中西餐"}, "麻婆豆腐":{kcal:130,unit:120,desc:"1份约120g",cat:"🍲 菜肴·中西餐"},
+  "番茄炒蛋":{kcal:95,unit:120,desc:"1份约120g",cat:"🍲 菜肴·中西餐"}, "青椒肉丝":{kcal:160,unit:100,desc:"1份约100g",cat:"🍲 菜肴·中西餐"}, "鱼香肉丝":{kcal:150,unit:100,desc:"1份约100g",cat:"🍲 菜肴·中西餐"}, "回锅肉":{kcal:340,unit:90,desc:"1份约90g",cat:"🍲 菜肴·中西餐"},
+  "清炒时蔬":{kcal:55,unit:120,desc:"1份约120g",cat:"🍲 菜肴·中西餐"}, "炒青菜":{kcal:50,unit:120,desc:"1份约120g",cat:"🍲 菜肴·中西餐"}, "凉拌黄瓜":{kcal:40,unit:100,desc:"1份约100g",cat:"🍲 菜肴·中西餐"}, "拍黄瓜":{kcal:40,unit:100,desc:"1份约100g",cat:"🍲 菜肴·中西餐"},
+  "炒土豆丝":{kcal:110,unit:100,desc:"1份约100g",cat:"🍲 菜肴·中西餐"}, "地三鲜":{kcal:140,unit:120,desc:"1份约120g",cat:"🍲 菜肴·中西餐"}, "酸辣土豆丝":{kcal:110,unit:100,desc:"1份约100g",cat:"🍲 菜肴·中西餐"},
+  "白切鸡":{kcal:190,unit:100,desc:"几块约100g",cat:"🍲 菜肴·中西餐"}, "红烧茄子":{kcal:120,unit:120,desc:"1份约120g",cat:"🍲 菜肴·中西餐"}, "西红柿蛋汤":{kcal:35,unit:150,desc:"1碗约150g",cat:"🍲 菜肴·中西餐"}, "紫菜蛋汤":{kcal:30,unit:150,desc:"1碗约150g",cat:"🍲 菜肴·中西餐"},
+  "饺子":{kcal:220,unit:50,desc:"1个约50g",cat:"🍲 菜肴·中西餐"}, "包子":{kcal:220,unit:80,desc:"1个约80g",cat:"🍲 菜肴·中西餐"}, "烧麦":{kcal:200,unit:50,desc:"1个约50g",cat:"🍲 菜肴·中西餐"},
+  /* ---- 蔬菜 ---- */
+  "西兰花":{kcal:34,unit:150,desc:"1盘约150g",cat:"🥬 蔬菜·菌菇"}, "菠菜":{kcal:23,unit:150,desc:"1盘约150g",cat:"🥬 蔬菜·菌菇"}, "番茄":{kcal:18,unit:150,desc:"1个约150g",cat:"🥬 蔬菜·菌菇"},
+  "黄瓜":{kcal:15,unit:150,desc:"1根约150g",cat:"🥬 蔬菜·菌菇"}, "冬瓜":{kcal:12,unit:200,desc:"1碗约200g",cat:"🥬 蔬菜·菌菇"}, "生菜":{kcal:15,unit:150,desc:"1盘约150g",cat:"🥬 蔬菜·菌菇"},
+  "胡萝卜":{kcal:39,unit:120,desc:"1根约120g",cat:"🥬 蔬菜·菌菇"}, "青菜":{kcal:20,unit:150,desc:"1盘约150g",cat:"🥬 蔬菜·菌菇"}, "蘑菇":{kcal:22,unit:100,desc:"1份约100g",cat:"🥬 蔬菜·菌菇"}, "海带":{kcal:13,unit:100,desc:"1份约100g",cat:"🥬 蔬菜·菌菇"},
+  /* ---- 坚果/补剂 ---- */
+  "坚果(混合)":{kcal:600,unit:25,desc:"1小把约25g",cat:"🍰 零食·甜品·坚果"}, "花生":{kcal:567,unit:25,desc:"1小把约25g",cat:"🍰 零食·甜品·坚果"}, "蛋白粉":{kcal:380,unit:30,desc:"1勺约30g",cat:"🍰 零食·甜品·坚果"},
+  "核桃":{kcal:654,unit:20,desc:"2个约20g",cat:"🍰 零食·甜品·坚果"}, "腰果":{kcal:553,unit:20,desc:"1小把约20g",cat:"🍰 零食·甜品·坚果"}, "杏仁":{kcal:579,unit:20,desc:"1小把约20g",cat:"🍰 零食·甜品·坚果"}, "瓜子":{kcal:582,unit:15,desc:"1小把约15g",cat:"🍰 零食·甜品·坚果"}, "巴旦木":{kcal:576,unit:20,desc:"1小把约20g",cat:"🍰 零食·甜品·坚果"},
+  /* ---- 主食(续) ---- */
+  "油条":{kcal:388,unit:60,desc:"1根约60g",cat:"🍚 主食·粗粮"}, "煎饼":{kcal:250,unit:150,desc:"1个约150g",cat:"🍚 主食·粗粮"}, "手抓饼":{kcal:350,unit:100,desc:"1张约100g",cat:"🍚 主食·粗粮"}, "葱油饼":{kcal:330,unit:100,desc:"1张约100g",cat:"🍚 主食·粗粮"}, "烙饼":{kcal:255,unit:100,desc:"1张约100g",cat:"🍚 主食·粗粮"},
+  "年糕":{kcal:154,unit:100,desc:"1条约100g",cat:"🍚 主食·粗粮"}, "汤圆":{kcal:311,unit:40,desc:"1个约40g",cat:"🍚 主食·粗粮"}, "小米粥":{kcal:46,unit:250,desc:"1碗约250g",cat:"🍚 主食·粗粮"}, "白粥":{kcal:46,unit:250,desc:"1碗约250g",cat:"🍚 主食·粗粮"}, "八宝粥":{kcal:85,unit:250,desc:"1罐约250g",cat:"🍚 主食·粗粮"},
+  "荞麦面":{kcal:137,unit:200,desc:"1碗约200g",cat:"🍚 主食·粗粮"}, "意面(熟)":{kcal:158,unit:200,desc:"1份约200g",cat:"🍚 主食·粗粮"}, "河粉":{kcal:110,unit:200,desc:"1碗约200g",cat:"🍚 主食·粗粮"}, "肠粉":{kcal:110,unit:150,desc:"1份约150g",cat:"🍚 主食·粗粮"}, "烧饼":{kcal:280,unit:80,desc:"1个约80g",cat:"🍚 主食·粗粮"},
+  "花卷":{kcal:211,unit:70,desc:"1个约70g",cat:"🍚 主食·粗粮"}, "窝窝头":{kcal:190,unit:60,desc:"1个约60g",cat:"🍚 主食·粗粮"}, "紫薯":{kcal:82,unit:150,desc:"1个约150g",cat:"🍚 主食·粗粮"}, "山药":{kcal:57,unit:150,desc:"1段约150g",cat:"🍚 主食·粗粮"}, "芋头":{kcal:79,unit:150,desc:"1个约150g",cat:"🍚 主食·粗粮"},
+  /* ---- 水果(续) ---- */
+  "梨":{kcal:57,unit:200,desc:"1个约200g",cat:"🍎 水果"}, "桃子":{kcal:48,unit:150,desc:"1个约150g",cat:"🍎 水果"}, "柚子":{kcal:42,unit:200,desc:"1瓣约200g",cat:"🍎 水果"}, "猕猴桃":{kcal:61,unit:100,desc:"1个约100g",cat:"🍎 水果"}, "菠萝":{kcal:50,unit:150,desc:"1块约150g",cat:"🍎 水果"},
+  "芒果":{kcal:60,unit:200,desc:"半个约200g",cat:"🍎 水果"}, "樱桃":{kcal:63,unit:100,desc:"1小碗约100g",cat:"🍎 水果"}, "荔枝":{kcal:71,unit:100,desc:"约5颗100g",cat:"🍎 水果"}, "火龙果":{kcal:60,unit:200,desc:"半个约200g",cat:"🍎 水果"}, "哈密瓜":{kcal:34,unit:200,desc:"1块约200g",cat:"🍎 水果"}, "木瓜":{kcal:43,unit:200,desc:"1块约200g",cat:"🍎 水果"}, "牛油果":{kcal:171,unit:150,desc:"半个约150g",cat:"🍎 水果"},
+  /* ---- 饮品/咖啡(续) ---- */
+  "酸奶(风味)":{kcal:90,unit:150,desc:"1杯约150g",cat:"🥤 饮品·咖啡"}, "希腊酸奶":{kcal:97,unit:150,desc:"1杯约150g",cat:"🥤 饮品·咖啡"}, "豆奶":{kcal:54,unit:200,desc:"1杯约200g",cat:"🥤 饮品·咖啡"}, "椰汁":{kcal:51,unit:250,desc:"1杯约250g",cat:"🥤 饮品·咖啡"}, "养乐多":{kcal:76,unit:100,desc:"1瓶约100g",cat:"🥤 饮品·咖啡"},
+  "可乐(零度)":{kcal:0,unit:330,desc:"1罐约330g",cat:"🥤 饮品·咖啡"}, "雪碧":{kcal:45,unit:330,desc:"1罐约330g",cat:"🥤 饮品·咖啡"}, "气泡水":{kcal:0,unit:330,desc:"1罐约330g",cat:"🥤 饮品·咖啡"}, "啤酒(精酿)":{kcal:60,unit:330,desc:"1罐约330g",cat:"🥤 饮品·咖啡"}, "红酒":{kcal:85,unit:150,desc:"1杯约150g",cat:"🥤 饮品·咖啡"}, "白酒":{kcal:298,unit:50,desc:"1两约50g",cat:"🥤 饮品·咖啡"}, "威士忌":{kcal:250,unit:50,desc:"1小杯约50g",cat:"🥤 饮品·咖啡"},
+  "抹茶拿铁":{kcal:120,unit:250,desc:"1杯约250g",cat:"🥤 饮品·咖啡"}, "燕麦奶":{kcal:45,unit:200,desc:"1杯约200g",cat:"🥤 饮品·咖啡"}, "柠檬水":{kcal:30,unit:300,desc:"1杯约300g",cat:"🥤 饮品·咖啡"},
+  /* ---- 蛋白类(续) ---- */
+  "鸡翅":{kcal:194,unit:80,desc:"1个约80g",cat:"🍗 蛋白·肉蛋奶"}, "鸡爪":{kcal:215,unit:50,desc:"1只约50g",cat:"🍗 蛋白·肉蛋奶"}, "鸭胸肉":{kcal:135,unit:120,desc:"1块约120g",cat:"🍗 蛋白·肉蛋奶"}, "鸭肉":{kcal:240,unit:100,desc:"1份约100g",cat:"🍗 蛋白·肉蛋奶"}, "鹅肉":{kcal:284,unit:100,desc:"1份约100g",cat:"🍗 蛋白·肉蛋奶"},
+  "羊肉(瘦)":{kcal:118,unit:120,desc:"1份约120g",cat:"🍗 蛋白·肉蛋奶"}, "羊肉串":{kcal:217,unit:50,desc:"1串约50g",cat:"🍗 蛋白·肉蛋奶"}, "肥牛卷":{kcal:250,unit:100,desc:"1份约100g",cat:"🍗 蛋白·肉蛋奶"}, "牛排":{kcal:188,unit:150,desc:"1块约150g",cat:"🍗 蛋白·肉蛋奶"}, "牛腩":{kcal:332,unit:100,desc:"1份约100g",cat:"🍗 蛋白·肉蛋奶"},
+  "猪里脊":{kcal:143,unit:120,desc:"1份约120g",cat:"🍗 蛋白·肉蛋奶"}, "培根":{kcal:505,unit:20,desc:"1片约20g",cat:"🍗 蛋白·肉蛋奶"}, "火腿":{kcal:330,unit:30,desc:"1片约30g",cat:"🍗 蛋白·肉蛋奶"}, "香肠":{kcal:310,unit:50,desc:"1根约50g",cat:"🍗 蛋白·肉蛋奶"}, "午餐肉":{kcal:229,unit:50,desc:"2片约50g",cat:"🍗 蛋白·肉蛋奶"},
+  "虾(基围)":{kcal:99,unit:100,desc:"1份约100g",cat:"🍗 蛋白·肉蛋奶"}, "蟹肉":{kcal:95,unit:100,desc:"1份约100g",cat:"🍗 蛋白·肉蛋奶"}, "鱿鱼":{kcal:92,unit:100,desc:"1份约100g",cat:"🍗 蛋白·肉蛋奶"}, "章鱼":{kcal:82,unit:100,desc:"1份约100g",cat:"🍗 蛋白·肉蛋奶"}, "生蚝":{kcal:57,unit:100,desc:"3只约100g",cat:"🍗 蛋白·肉蛋奶"}, "扇贝":{kcal:60,unit:100,desc:"3个约100g",cat:"🍗 蛋白·肉蛋奶"},
+  "金枪鱼":{kcal:132,unit:100,desc:"1份约100g",cat:"🍗 蛋白·肉蛋奶"}, "鳕鱼":{kcal:88,unit:120,desc:"1块约120g",cat:"🍗 蛋白·肉蛋奶"}, "鲈鱼":{kcal:105,unit:150,desc:"1条约150g",cat:"🍗 蛋白·肉蛋奶"}, "虾皮":{kcal:153,unit:10,desc:"1撮约10g",cat:"🍗 蛋白·肉蛋奶"}, "皮蛋":{kcal:171,unit:50,desc:"1个约50g",cat:"🍗 蛋白·肉蛋奶"}, "咸鸭蛋":{kcal:190,unit:60,desc:"1个约60g",cat:"🍗 蛋白·肉蛋奶"},
+  "毛豆":{kcal:131,unit:100,desc:"1份约100g",cat:"🍗 蛋白·肉蛋奶"}, "蚕豆":{kcal:338,unit:50,desc:"1把约50g",cat:"🍗 蛋白·肉蛋奶"}, "鹰嘴豆":{kcal:164,unit:50,desc:"1份约50g",cat:"🍗 蛋白·肉蛋奶"}, "扁豆":{kcal:37,unit:100,desc:"1份约100g",cat:"🍗 蛋白·肉蛋奶"},
+  /* ---- 豆制品(续) ---- */
+  "豆腐干(卤)":{kcal:153,unit:80,desc:"几片约80g",cat:"🍗 蛋白·肉蛋奶"}, "千张":{kcal:262,unit:50,desc:"几张约50g",cat:"🍗 蛋白·肉蛋奶"}, "腐竹":{kcal:461,unit:30,desc:"1把约30g",cat:"🍗 蛋白·肉蛋奶"}, "素鸡":{kcal:194,unit:80,desc:"1块约80g",cat:"🍗 蛋白·肉蛋奶"}, "豆皮":{kcal:300,unit:50,desc:"几张约50g",cat:"🍗 蛋白·肉蛋奶"}, "内酯豆腐":{kcal:50,unit:150,desc:"1盒约150g",cat:"🍗 蛋白·肉蛋奶"},
+  /* ---- 中式炒菜/快餐(续) ---- */
+  "水煮肉片":{kcal:230,unit:120,desc:"1份约120g",cat:"🍲 菜肴·中西餐"}, "鱼香茄子":{kcal:130,unit:120,desc:"1份约120g",cat:"🍲 菜肴·中西餐"}, "干煸豆角":{kcal:180,unit:120,desc:"1份约120g",cat:"🍲 菜肴·中西餐"}, "辣子鸡":{kcal:280,unit:120,desc:"1份约120g",cat:"🍲 菜肴·中西餐"}, "口水鸡":{kcal:210,unit:120,desc:"1份约120g",cat:"🍲 菜肴·中西餐"},
+  "夫妻肺片":{kcal:200,unit:100,desc:"1份约100g",cat:"🍲 菜肴·中西餐"}, "水煮鱼":{kcal:200,unit:150,desc:"1份约150g",cat:"🍲 菜肴·中西餐"}, "酸菜鱼":{kcal:180,unit:150,desc:"1份约150g",cat:"🍲 菜肴·中西餐"}, "毛血旺":{kcal:220,unit:150,desc:"1份约150g",cat:"🍲 菜肴·中西餐"}, "粉蒸肉":{kcal:330,unit:100,desc:"1份约100g",cat:"🍲 菜肴·中西餐"},
+  "糖醋排骨":{kcal:280,unit:100,desc:"1份约100g",cat:"🍲 菜肴·中西餐"}, "可乐鸡翅":{kcal:230,unit:100,desc:"1份约100g",cat:"🍲 菜肴·中西餐"}, "红烧鸡块":{kcal:230,unit:120,desc:"1份约120g",cat:"🍲 菜肴·中西餐"}, "葱爆羊肉":{kcal:210,unit:120,desc:"1份约120g",cat:"🍲 菜肴·中西餐"}, "小炒黄牛肉":{kcal:220,unit:120,desc:"1份约120g",cat:"🍲 菜肴·中西餐"},
+  "蒜蓉西兰花":{kcal:60,unit:150,desc:"1份约150g",cat:"🍲 菜肴·中西餐"}, "手撕包菜":{kcal:70,unit:150,desc:"1份约150g",cat:"🍲 菜肴·中西餐"}, "干锅花菜":{kcal:120,unit:150,desc:"1份约150g",cat:"🍲 菜肴·中西餐"}, "凉拌木耳":{kcal:50,unit:100,desc:"1份约100g",cat:"🍲 菜肴·中西餐"}, "凉拌海带丝":{kcal:40,unit:100,desc:"1份约100g",cat:"🍲 菜肴·中西餐"},
+  "蒸蛋":{kcal:85,unit:150,desc:"1碗约150g",cat:"🍲 菜肴·中西餐"}, "蛋炒饭":{kcal:190,unit:200,desc:"1碗约200g",cat:"🍲 菜肴·中西餐"}, "扬州炒饭":{kcal:200,unit:200,desc:"1碗约200g",cat:"🍲 菜肴·中西餐"}, "炒面":{kcal:220,unit:200,desc:"1份约200g",cat:"🍲 菜肴·中西餐"}, "炒河粉":{kcal:230,unit:200,desc:"1份约200g",cat:"🍲 菜肴·中西餐"}, "螺蛳粉":{kcal:380,unit:400,desc:"1碗约400g",cat:"🍲 菜肴·中西餐"}, "酸辣粉":{kcal:350,unit:400,desc:"1碗约400g",cat:"🍲 菜肴·中西餐"},
+  "肉包子":{kcal:230,unit:80,desc:"1个约80g",cat:"🍲 菜肴·中西餐"}, "菜包子":{kcal:160,unit:80,desc:"1个约80g",cat:"🍲 菜肴·中西餐"}, "小笼包":{kcal:230,unit:50,desc:"1个约50g",cat:"🍲 菜肴·中西餐"}, "煎包":{kcal:250,unit:60,desc:"1个约60g",cat:"🍲 菜肴·中西餐"}, "生煎":{kcal:240,unit:60,desc:"1个约60g",cat:"🍲 菜肴·中西餐"}, "锅贴":{kcal:230,unit:60,desc:"1个约60g",cat:"🍲 菜肴·中西餐"}, "馄饨":{kcal:180,unit:200,desc:"1碗约200g",cat:"🍲 菜肴·中西餐"}, "云吞面":{kcal:200,unit:250,desc:"1碗约250g",cat:"🍲 菜肴·中西餐"},
+  "白灼虾":{kcal:99,unit:150,desc:"1份约150g",cat:"🍲 菜肴·中西餐"}, "清蒸鱼":{kcal:105,unit:200,desc:"1条约200g",cat:"🍲 菜肴·中西餐"}, "佛跳墙":{kcal:180,unit:200,desc:"1盅约200g",cat:"🍲 菜肴·中西餐"}, "烤鸭":{kcal:280,unit:100,desc:"2片约100g",cat:"🍲 菜肴·中西餐"}, "酱牛肉":{kcal:250,unit:80,desc:"1份约80g",cat:"🍲 菜肴·中西餐"},
+  "春卷":{kcal:230,unit:50,desc:"1个约50g",cat:"🍲 菜肴·中西餐"}, "炸糕":{kcal:350,unit:60,desc:"1个约60g",cat:"🍲 菜肴·中西餐"}, "驴打滚":{kcal:320,unit:60,desc:"1块约60g",cat:"🍲 菜肴·中西餐"}, "糖火烧":{kcal:380,unit:60,desc:"1个约60g",cat:"🍲 菜肴·中西餐"},
+  /* ---- 蔬菜(续) ---- */
+  "芹菜":{kcal:16,unit:150,desc:"1份约150g",cat:"🥬 蔬菜·菌菇"}, "白菜":{kcal:20,unit:150,desc:"1份约150g",cat:"🥬 蔬菜·菌菇"}, "油麦菜":{kcal:15,unit:150,desc:"1份约150g",cat:"🥬 蔬菜·菌菇"}, "空心菜":{kcal:20,unit:150,desc:"1份约150g",cat:"🥬 蔬菜·菌菇"}, "西葫芦":{kcal:18,unit:150,desc:"1份约150g",cat:"🥬 蔬菜·菌菇"}, "茄子":{kcal:23,unit:150,desc:"1根约150g",cat:"🥬 蔬菜·菌菇"},
+  "青椒":{kcal:22,unit:100,desc:"1个约100g",cat:"🥬 蔬菜·菌菇"}, "洋葱":{kcal:40,unit:100,desc:"1个约100g",cat:"🥬 蔬菜·菌菇"}, "南瓜":{kcal:26,unit:150,desc:"1块约150g",cat:"🥬 蔬菜·菌菇"}, "苦瓜":{kcal:19,unit:150,desc:"1份约150g",cat:"🥬 蔬菜·菌菇"}, "芦笋":{kcal:20,unit:100,desc:"1份约100g",cat:"🥬 蔬菜·菌菇"}, "秋葵":{kcal:37,unit:100,desc:"1份约100g",cat:"🥬 蔬菜·菌菇"}, "莲藕":{kcal:74,unit:100,desc:"1段约100g",cat:"🥬 蔬菜·菌菇"}, "白萝卜":{kcal:21,unit:150,desc:"1块约150g",cat:"🥬 蔬菜·菌菇"}, "莴笋":{kcal:15,unit:150,desc:"1份约150g",cat:"🥬 蔬菜·菌菇"}, "紫甘蓝":{kcal:25,unit:100,desc:"1份约100g",cat:"🥬 蔬菜·菌菇"}, "豆芽":{kcal:18,unit:150,desc:"1份约150g",cat:"🥬 蔬菜·菌菇"}, "金针菇":{kcal:26,unit:100,desc:"1份约100g",cat:"🥬 蔬菜·菌菇"}, "香菇":{kcal:26,unit:100,desc:"1份约100g",cat:"🥬 蔬菜·菌菇"}, "平菇":{kcal:24,unit:100,desc:"1份约100g",cat:"🥬 蔬菜·菌菇"},
+  /* ---- 甜品/零食 ---- */
+  "巧克力":{kcal:546,unit:20,desc:"1小块约20g",cat:"🍰 零食·甜品·坚果"}, "蛋糕":{kcal:347,unit:50,desc:"1块约50g",cat:"🍰 零食·甜品·坚果"}, "饼干":{kcal:433,unit:20,desc:"2片约20g",cat:"🍰 零食·甜品·坚果"}, "曲奇":{kcal:502,unit:20,desc:"2块约20g",cat:"🍰 零食·甜品·坚果"}, "甜甜圈":{kcal:452,unit:50,desc:"1个约50g",cat:"🍰 零食·甜品·坚果"}, "马卡龙":{kcal:370,unit:30,desc:"1个约30g",cat:"🍰 零食·甜品·坚果"},
+  "冰淇淋":{kcal:207,unit:80,desc:"1球约80g",cat:"🍰 零食·甜品·坚果"}, "雪糕":{kcal:150,unit:70,desc:"1根约70g",cat:"🍰 零食·甜品·坚果"}, "布丁":{kcal:120,unit:100,desc:"1个约100g",cat:"🍰 零食·甜品·坚果"}, "蛋挞(市售)":{kcal:290,unit:50,desc:"1个约50g",cat:"🍰 零食·甜品·坚果"}, "泡芙":{kcal:280,unit:40,desc:"1个约40g",cat:"🍰 零食·甜品·坚果"}, "麻薯":{kcal:280,unit:40,desc:"1个约40g",cat:"🍰 零食·甜品·坚果"},
+  "薯片":{kcal:548,unit:30,desc:"1小包约30g",cat:"🍰 零食·甜品·坚果"}, "锅巴":{kcal:512,unit:30,desc:"1小包约30g",cat:"🍰 零食·甜品·坚果"}, "虾条":{kcal:480,unit:30,desc:"1小包约30g",cat:"🍰 零食·甜品·坚果"}, "巧克力派":{kcal:440,unit:30,desc:"1个约30g",cat:"🍰 零食·甜品·坚果"}, "威化饼":{kcal:500,unit:25,desc:"1块约25g",cat:"🍰 零食·甜品·坚果"}, "沙琪玛":{kcal:470,unit:30,desc:"1块约30g",cat:"🍰 零食·甜品·坚果"},
+  "糖果":{kcal:400,unit:10,desc:"3颗约10g",cat:"🍰 零食·甜品·坚果"}, "棉花糖":{kcal:320,unit:20,desc:"3颗约20g",cat:"🍰 零食·甜品·坚果"}, "果冻":{kcal:70,unit:100,desc:"1个约100g",cat:"🍰 零食·甜品·坚果"}, "蜜饯":{kcal:330,unit:30,desc:"1小把约30g",cat:"🍰 零食·甜品·坚果"}, "葡萄干":{kcal:299,unit:20,desc:"1小把约20g",cat:"🍰 零食·甜品·坚果"},
+  /* ---- 西式/其他 ---- */
+  "牛排(西冷)":{kcal:200,unit:150,desc:"1块约150g",cat:"🍲 菜肴·中西餐"}, "培根蛋堡":{kcal:300,unit:120,desc:"1个约120g",cat:"🍲 菜肴·中西餐"}, "三明治":{kcal:250,unit:150,desc:"1个约150g",cat:"🍲 菜肴·中西餐"}, "汉堡(芝士)":{kcal:310,unit:160,desc:"1个约160g",cat:"🍲 菜肴·中西餐"}, "热狗":{kcal:290,unit:120,desc:"1根约120g",cat:"🍲 菜肴·中西餐"}, "可颂":{kcal:380,unit:60,desc:"1个约60g",cat:"🍲 菜肴·中西餐"}, "贝果":{kcal:250,unit:80,desc:"1个约80g",cat:"🍲 菜肴·中西餐"},
+  "蔬菜沙拉":{kcal:60,unit:200,desc:"1份约200g",cat:"🍲 菜肴·中西餐"}, "凯撒沙拉":{kcal:180,unit:200,desc:"1份约200g",cat:"🍲 菜肴·中西餐"}, "意面(肉酱)":{kcal:220,unit:250,desc:"1份约250g",cat:"🍲 菜肴·中西餐"}, "披萨(芝士)":{kcal:266,unit:100,desc:"1角约100g",cat:"🍲 菜肴·中西餐"}, "芝士条":{kcal:300,unit:50,desc:"1根约50g",cat:"🍲 菜肴·中西餐"}, "洋葱圈":{kcal:350,unit:60,desc:"3个约60g",cat:"🍲 菜肴·中西餐"},
+  "寿司(握)":{kcal:200,unit:150,desc:"3贯约150g",cat:"🍲 菜肴·中西餐"}, "天妇罗":{kcal:280,unit:100,desc:"1份约100g",cat:"🍲 菜肴·中西餐"}, "拉面(豚骨)":{kcal:450,unit:400,desc:"1碗约400g",cat:"🍲 菜肴·中西餐"}, "乌冬面":{kcal:150,unit:200,desc:"1碗约200g",cat:"🍲 菜肴·中西餐"}, "咖喱饭":{kcal:400,unit:300,desc:"1份约300g",cat:"🍲 菜肴·中西餐"}, "蛋包饭":{kcal:300,unit:250,desc:"1份约250g",cat:"🍲 菜肴·中西餐"},
+  /* ================= 扩充：主食/粗粮 ================= */
+  "糙米饭(熟)":{kcal:112,unit:150,desc:"1碗约150g",cat:"🍲 菜肴·中西餐"}, "黑米饭(熟)":{kcal:135,unit:150,desc:"1碗约150g",cat:"🍲 菜肴·中西餐"}, "藜麦(熟)":{kcal:120,unit:100,desc:"1份约100g",cat:"🍲 菜肴·中西餐"}, "小米饭(熟)":{kcal:120,unit:150,desc:"1碗约150g",cat:"🍲 菜肴·中西餐"},
+  "全麦馒头":{kcal:210,unit:80,desc:"1个约80g",cat:"🍲 菜肴·中西餐"}, "杂粮馒头":{kcal:200,unit:80,desc:"1个约80g",cat:"🍲 菜肴·中西餐"}, "无糖全麦吐司":{kcal:240,unit:35,desc:"1片约35g",cat:"🍲 菜肴·中西餐"}, "法棍":{kcal:290,unit:60,desc:"1段约60g",cat:"🍲 菜肴·中西餐"}, "欧包":{kcal:260,unit:80,desc:"1块约80g",cat:"🍲 菜肴·中西餐"},
+  "杂粮粥":{kcal:60,unit:250,desc:"1碗约250g",cat:"🍲 菜肴·中西餐"}, "皮蛋瘦肉粥":{kcal:80,unit:300,desc:"1碗约300g",cat:"🍲 菜肴·中西餐"}, "南瓜粥":{kcal:50,unit:250,desc:"1碗约250g",cat:"🍲 菜肴·中西餐"}, "红豆粥":{kcal:75,unit:250,desc:"1碗约250g",cat:"🍲 菜肴·中西餐"}, "绿豆粥":{kcal:62,unit:250,desc:"1碗约250g",cat:"🍲 菜肴·中西餐"},
+  "米粉(熟)":{kcal:110,unit:200,desc:"1碗约200g",cat:"🍲 菜肴·中西餐"}, "米线(熟)":{kcal:110,unit:200,desc:"1碗约200g",cat:"🍲 菜肴·中西餐"}, "刀削面":{kcal:135,unit:250,desc:"1碗约250g",cat:"🍲 菜肴·中西餐"}, "拉条子":{kcal:150,unit:250,desc:"1份约250g",cat:"🍲 菜肴·中西餐"}, "凉面":{kcal:180,unit:200,desc:"1份约200g",cat:"🍲 菜肴·中西餐"},
+  "全麦饼":{kcal:250,unit:80,desc:"1张约80g",cat:"🍲 菜肴·中西餐"}, "鸡蛋灌饼":{kcal:280,unit:150,desc:"1个约150g",cat:"🍲 菜肴·中西餐"}, "杂粮煎饼":{kcal:230,unit:150,desc:"1个约150g",cat:"🍲 菜肴·中西餐"}, "锅盔":{kcal:290,unit:100,desc:"1块约100g",cat:"🍲 菜肴·中西餐"}, "馕":{kcal:280,unit:100,desc:"1块约100g",cat:"🍲 菜肴·中西餐"},
+  "藕粉":{kcal:372,unit:30,desc:"干重1份约30g",cat:"🍲 菜肴·中西餐"}, "米糕":{kcal:210,unit:80,desc:"1块约80g",cat:"🍲 菜肴·中西餐"}, "发糕":{kcal:200,unit:80,desc:"1块约80g",cat:"🍲 菜肴·中西餐"}, "凉粉":{kcal:38,unit:200,desc:"1碗约200g",cat:"🍲 菜肴·中西餐"}, "魔芋":{kcal:12,unit:150,desc:"1份约150g",cat:"🍲 菜肴·中西餐"},
+  /* ================= 扩充：蛋白/肉类/海鲜 ================= */
+  "鸡胸肉(水煮)":{kcal:118,unit:120,desc:"1块约120g",cat:"🍲 菜肴·中西餐"}, "鸡胸肉(煎)":{kcal:165,unit:120,desc:"1块约120g",cat:"🍲 菜肴·中西餐"}, "鸡全腿":{kcal:181,unit:150,desc:"1个约150g",cat:"🍲 菜肴·中西餐"}, "琵琶腿":{kcal:181,unit:100,desc:"1个约100g",cat:"🍲 菜肴·中西餐"}, "鸡胗":{kcal:118,unit:80,desc:"1份约80g",cat:"🍲 菜肴·中西餐"}, "鸡肝":{kcal:121,unit:80,desc:"1份约80g",cat:"🍲 菜肴·中西餐"},
+  "猪肝":{kcal:129,unit:80,desc:"1份约80g",cat:"🍲 菜肴·中西餐"}, "猪蹄":{kcal:260,unit:100,desc:"1个约100g",cat:"🍲 菜肴·中西餐"}, "猪耳":{kcal:180,unit:60,desc:"1份约60g",cat:"🍲 菜肴·中西餐"}, "猪肚":{kcal:110,unit:100,desc:"1份约100g",cat:"🍲 菜肴·中西餐"}, "大肠":{kcal:290,unit:80,desc:"1份约80g",cat:"🍲 菜肴·中西餐"},
+  "牛腱":{kcal:145,unit:100,desc:"1份约100g",cat:"🍲 菜肴·中西餐"}, "牛肚":{kcal:72,unit:100,desc:"1份约100g",cat:"🍲 菜肴·中西餐"}, "牛舌":{kcal:200,unit:80,desc:"1份约80g",cat:"🍲 菜肴·中西餐"}, "羊排":{kcal:230,unit:120,desc:"1份约120g",cat:"🍲 菜肴·中西餐"}, "羊蝎子":{kcal:230,unit:150,desc:"1份约150g",cat:"🍲 菜肴·中西餐"},
+  "鹌鹑蛋":{kcal:160,unit:10,desc:"1个约10g",cat:"🍲 菜肴·中西餐"}, "鸭蛋":{kcal:180,unit:70,desc:"1个约70g",cat:"🍲 菜肴·中西餐"}, "鹅蛋":{kcal:196,unit:90,desc:"1个约90g",cat:"🍲 菜肴·中西餐"}, "溏心蛋":{kcal:150,unit:50,desc:"1个约50g",cat:"🍲 菜肴·中西餐"}, "卤蛋":{kcal:150,unit:50,desc:"1个约50g",cat:"🍲 菜肴·中西餐"},
+  "巴沙鱼":{kcal:90,unit:120,desc:"1块约120g",cat:"🍲 菜肴·中西餐"}, "龙利鱼":{kcal:90,unit:120,desc:"1块约120g",cat:"🍲 菜肴·中西餐"}, "黄鱼":{kcal:100,unit:150,desc:"1条约150g",cat:"🍲 菜肴·中西餐"}, "鲫鱼":{kcal:108,unit:150,desc:"1条约150g",cat:"🍲 菜肴·中西餐"}, "草鱼":{kcal:113,unit:150,desc:"1块约150g",cat:"🍲 菜肴·中西餐"}, "黑鱼":{kcal:85,unit:120,desc:"1块约120g",cat:"🍲 菜肴·中西餐"},
+  "大虾":{kcal:99,unit:100,desc:"1份约100g",cat:"🍲 菜肴·中西餐"}, "龙虾":{kcal:90,unit:150,desc:"1只约150g",cat:"🍲 菜肴·中西餐"}, "小龙虾":{kcal:93,unit:100,desc:"1份约100g",cat:"🍲 菜肴·中西餐"}, "花甲":{kcal:62,unit:100,desc:"1份约100g",cat:"🍲 菜肴·中西餐"}, "蛤蜊":{kcal:62,unit:100,desc:"1份约100g",cat:"🍲 菜肴·中西餐"}, "田螺":{kcal:60,unit:100,desc:"1份约100g",cat:"🍲 菜肴·中西餐"}, "海参":{kcal:78,unit:80,desc:"1条约80g",cat:"🍲 菜肴·中西餐"},
+  "鱼丸":{kcal:110,unit:80,desc:"几个约80g",cat:"🍲 菜肴·中西餐"}, "虾滑":{kcal:120,unit:80,desc:"1份约80g",cat:"🍲 菜肴·中西餐"}, "蟹棒":{kcal:100,unit:60,desc:"几根约60g",cat:"🍲 菜肴·中西餐"}, "鱼豆腐":{kcal:150,unit:80,desc:"几块约80g",cat:"🍲 菜肴·中西餐"}, "撒尿牛丸":{kcal:180,unit:80,desc:"几个约80g",cat:"🍲 菜肴·中西餐"},
+  /* ================= 扩充：豆制品/蛋奶 ================= */
+  "老豆腐":{kcal:98,unit:120,desc:"1块约120g",cat:"🍲 菜肴·中西餐"}, "嫩豆腐":{kcal:50,unit:120,desc:"1块约120g",cat:"🍲 菜肴·中西餐"}, "冻豆腐":{kcal:80,unit:100,desc:"1份约100g",cat:"🍲 菜肴·中西餐"}, "油豆腐":{kcal:245,unit:50,desc:"几个约50g",cat:"🍲 菜肴·中西餐"}, "豆花":{kcal:47,unit:200,desc:"1碗约200g",cat:"🍲 菜肴·中西餐"}, "臭豆腐":{kcal:210,unit:80,desc:"几块约80g",cat:"🍲 菜肴·中西餐"},
+  "全脂牛奶":{kcal:65,unit:200,desc:"1杯约200g",cat:"🍲 菜肴·中西餐"}, "高钙奶":{kcal:66,unit:200,desc:"1杯约200g",cat:"🍲 菜肴·中西餐"}, "低脂奶":{kcal:45,unit:200,desc:"1杯约200g",cat:"🍲 菜肴·中西餐"}, "奶酪":{kcal:328,unit:20,desc:"1片约20g",cat:"🍲 菜肴·中西餐"}, "马苏里拉":{kcal:300,unit:30,desc:"1份约30g",cat:"🍲 菜肴·中西餐"}, "黄油":{kcal:717,unit:10,desc:"1小块约10g",cat:"🍲 菜肴·中西餐"},
+  "老酸奶":{kcal:85,unit:150,desc:"1杯约150g",cat:"🍲 菜肴·中西餐"}, "炼乳":{kcal:330,unit:20,desc:"1勺约20g",cat:"🍲 菜肴·中西餐"}, "淡奶油":{kcal:340,unit:30,desc:"1份约30g",cat:"🍲 菜肴·中西餐"}, "奶片":{kcal:450,unit:15,desc:"几片约15g",cat:"🍲 菜肴·中西餐"},
+  /* ================= 扩充：蔬菜/菌菇 ================= */
+  "娃娃菜":{kcal:13,unit:150,desc:"1份约150g",cat:"🍲 菜肴·中西餐"}, "上海青":{kcal:15,unit:150,desc:"1份约150g",cat:"🍲 菜肴·中西餐"}, "小白菜":{kcal:15,unit:150,desc:"1份约150g",cat:"🍲 菜肴·中西餐"}, "茼蒿":{kcal:21,unit:150,desc:"1份约150g",cat:"🍲 菜肴·中西餐"}, "韭菜":{kcal:26,unit:100,desc:"1份约100g",cat:"🍲 菜肴·中西餐"}, "蒜苔":{kcal:61,unit:100,desc:"1份约100g",cat:"🍲 菜肴·中西餐"},
+  "四季豆":{kcal:31,unit:150,desc:"1份约150g",cat:"🍲 菜肴·中西餐"}, "荷兰豆":{kcal:30,unit:100,desc:"1份约100g",cat:"🍲 菜肴·中西餐"}, "豌豆":{kcal:105,unit:100,desc:"1份约100g",cat:"🍲 菜肴·中西餐"}, "玉米粒":{kcal:112,unit:100,desc:"1份约100g",cat:"🍲 菜肴·中西餐"}, "胡萝卜(熟)":{kcal:39,unit:120,desc:"1份约120g",cat:"🍲 菜肴·中西餐"},
+  "杏鲍菇":{kcal:35,unit:100,desc:"1份约100g",cat:"🍲 菜肴·中西餐"}, "茶树菇":{kcal:26,unit:100,desc:"1份约100g",cat:"🍲 菜肴·中西餐"}, "口蘑":{kcal:24,unit:100,desc:"1份约100g",cat:"🍲 菜肴·中西餐"}, "木耳(泡发)":{kcal:27,unit:80,desc:"1份约80g",cat:"🍲 菜肴·中西餐"}, "银耳(泡发)":{kcal:30,unit:100,desc:"1份约100g",cat:"🍲 菜肴·中西餐"}, "海带结":{kcal:14,unit:100,desc:"1份约100g",cat:"🍲 菜肴·中西餐"},
+  "西红柿":{kcal:18,unit:150,desc:"1个约150g",cat:"🍲 菜肴·中西餐"}, "彩椒":{kcal:26,unit:100,desc:"1个约100g",cat:"🍲 菜肴·中西餐"}, "丝瓜":{kcal:20,unit:150,desc:"1份约150g",cat:"🍲 菜肴·中西餐"}, "毛瓜":{kcal:12,unit:200,desc:"1份约200g",cat:"🍲 菜肴·中西餐"}, "佛手瓜":{kcal:16,unit:150,desc:"1份约150g",cat:"🍲 菜肴·中西餐"}, "竹笋":{kcal:23,unit:100,desc:"1份约100g",cat:"🍲 菜肴·中西餐"}, "芦蒿":{kcal:23,unit:100,desc:"1份约100g",cat:"🍲 菜肴·中西餐"},
+  /* ================= 扩充：水果 ================= */
+  "石榴":{kcal:72,unit:150,desc:"半个约150g",cat:"🍲 菜肴·中西餐"}, "山楂":{kcal:102,unit:100,desc:"1份约100g",cat:"🍲 菜肴·中西餐"}, "杨梅":{kcal:28,unit:100,desc:"1份约100g",cat:"🍲 菜肴·中西餐"}, "枇杷":{kcal:41,unit:100,desc:"几个约100g",cat:"🍲 菜肴·中西餐"}, "桑葚":{kcal:57,unit:100,desc:"1份约100g",cat:"🍲 菜肴·中西餐"}, "无花果":{kcal:65,unit:100,desc:"1个约100g",cat:"🍲 菜肴·中西餐"},
+  "李子":{kcal:38,unit:100,desc:"1个约100g",cat:"🍲 菜肴·中西餐"}, "杏":{kcal:36,unit:100,desc:"几个约100g",cat:"🍲 菜肴·中西餐"}, "椰子肉":{kcal:241,unit:80,desc:"1份约80g",cat:"🍲 菜肴·中西餐"}, "百香果":{kcal:97,unit:60,desc:"1个约60g",cat:"🍲 菜肴·中西餐"}, "柿子":{kcal:71,unit:150,desc:"1个约150g",cat:"🍲 菜肴·中西餐"}, "甘蔗":{kcal:64,unit:150,desc:"1段约150g",cat:"🍲 菜肴·中西餐"},
+  "圣女果":{kcal:22,unit:100,desc:"1小盒约100g",cat:"🍲 菜肴·中西餐"}, "青提":{kcal:43,unit:150,desc:"1串约150g",cat:"🍲 菜肴·中西餐"}, "红提":{kcal:45,unit:150,desc:"1串约150g",cat:"🍲 菜肴·中西餐"}, "车厘子":{kcal:63,unit:100,desc:"1份约100g",cat:"🍲 菜肴·中西餐"}, "蔓越莓":{kcal:46,unit:50,desc:"1份约50g",cat:"🍲 菜肴·中西餐"},
+  /* ================= 扩充：中式菜/家常 ================= */
+  "红烧排骨":{kcal:290,unit:100,desc:"1份约100g",cat:"🍲 菜肴·中西餐"}, "蒜蓉粉丝虾":{kcal:150,unit:120,desc:"1份约120g",cat:"🍲 菜肴·中西餐"}, "干锅有机花菜":{kcal:130,unit:150,desc:"1份约150g",cat:"🍲 菜肴·中西餐"}, "农家小炒肉":{kcal:250,unit:120,desc:"1份约120g",cat:"🍲 菜肴·中西餐"}, "青椒土豆丝":{kcal:100,unit:100,desc:"1份约100g",cat:"🍲 菜肴·中西餐"},
+  "西芹百合":{kcal:80,unit:120,desc:"1份约120g",cat:"🍲 菜肴·中西餐"}, "清炒荷兰豆":{kcal:60,unit:120,desc:"1份约120g",cat:"🍲 菜肴·中西餐"}, "蚝油生菜":{kcal:60,unit:150,desc:"1份约150g",cat:"🍲 菜肴·中西餐"}, "白灼菜心":{kcal:40,unit:150,desc:"1份约150g",cat:"🍲 菜肴·中西餐"}, "蒜蓉菠菜":{kcal:50,unit:150,desc:"1份约150g",cat:"🍲 菜肴·中西餐"},
+  "红烧带鱼":{kcal:180,unit:120,desc:"1段约120g",cat:"🍲 菜肴·中西餐"}, "干烧鲫鱼":{kcal:150,unit:150,desc:"1条约150g",cat:"🍲 菜肴·中西餐"}, "剁椒鱼头":{kcal:150,unit:200,desc:"1份约200g",cat:"🍲 菜肴·中西餐"}, "小炒河虾":{kcal:120,unit:100,desc:"1份约100g",cat:"🍲 菜肴·中西餐"}, "葱姜炒蟹":{kcal:130,unit:150,desc:"1份约150g",cat:"🍲 菜肴·中西餐"},
+  "宫保虾球":{kcal:170,unit:120,desc:"1份约120g",cat:"🍲 菜肴·中西餐"}, "咕咾肉":{kcal:270,unit:100,desc:"1份约100g",cat:"🍲 菜肴·中西餐"}, "京酱肉丝":{kcal:200,unit:100,desc:"1份约100g",cat:"🍲 菜肴·中西餐"}, "木须肉":{kcal:150,unit:120,desc:"1份约120g",cat:"🍲 菜肴·中西餐"}, "蒜苗回锅肉":{kcal:330,unit:90,desc:"1份约90g",cat:"🍲 菜肴·中西餐"},
+  "东坡肉":{kcal:450,unit:80,desc:"1块约80g",cat:"🍲 菜肴·中西餐"}, "梅菜扣肉":{kcal:400,unit:90,desc:"1份约90g",cat:"🍲 菜肴·中西餐"}, "咸烧白":{kcal:400,unit:90,desc:"1份约90g",cat:"🍲 菜肴·中西餐"}, "啤酒鸭":{kcal:220,unit:120,desc:"1份约120g",cat:"🍲 菜肴·中西餐"}, "小鸡炖蘑菇":{kcal:180,unit:150,desc:"1份约150g",cat:"🍲 菜肴·中西餐"},
+  "地锅鸡":{kcal:200,unit:150,desc:"1份约150g",cat:"🍲 菜肴·中西餐"}, "大盘鸡":{kcal:200,unit:150,desc:"1份约150g",cat:"🍲 菜肴·中西餐"}, "黄焖鸡":{kcal:180,unit:150,desc:"1份约150g",cat:"🍲 菜肴·中西餐"}, "香菇滑鸡":{kcal:150,unit:150,desc:"1份约150g",cat:"🍲 菜肴·中西餐"}, "三杯鸡":{kcal:210,unit:120,desc:"1份约120g",cat:"🍲 菜肴·中西餐"},
+  /* ================= 扩充：汤羹/粥/主食组合 ================= */
+  "冬瓜排骨汤":{kcal:60,unit:250,desc:"1碗约250g",cat:"🍲 菜肴·中西餐"}, "玉米排骨汤":{kcal:70,unit:250,desc:"1碗约250g",cat:"🍲 菜肴·中西餐"}, "番茄牛腩汤":{kcal:90,unit:250,desc:"1碗约250g",cat:"🍲 菜肴·中西餐"}, "老鸭汤":{kcal:110,unit:250,desc:"1碗约250g",cat:"🍲 菜肴·中西餐"}, "菌菇汤":{kcal:40,unit:250,desc:"1碗约250g",cat:"🍲 菜肴·中西餐"},
+  "酸辣汤":{kcal:70,unit:250,desc:"1碗约250g",cat:"🍲 菜肴·中西餐"}, "疙瘩汤":{kcal:90,unit:300,desc:"1碗约300g",cat:"🍲 菜肴·中西餐"}, "羊肉汤":{kcal:120,unit:300,desc:"1碗约300g",cat:"🍲 菜肴·中西餐"}, "胡辣汤":{kcal:80,unit:300,desc:"1碗约300g",cat:"🍲 菜肴·中西餐"}, "银耳汤":{kcal:45,unit:250,desc:"1碗约250g",cat:"🍲 菜肴·中西餐"},
+  /* ================= 扩充：早餐/小吃/主食 ================= */
+  "豆腐脑":{kcal:47,unit:250,desc:"1碗约250g",cat:"🍲 菜肴·中西餐"}, "胡辣汤配油条":{kcal:200,unit:250,desc:"1份约250g",cat:"🍲 菜肴·中西餐"}, "糯米鸡":{kcal:280,unit:200,desc:"1个约200g",cat:"🍲 菜肴·中西餐"}, "糯米饭":{kcal:170,unit:150,desc:"1份约150g",cat:"🍲 菜肴·中西餐"}, "粢饭团":{kcal:300,unit:180,desc:"1个约180g",cat:"🍲 菜肴·中西餐"},
+  "肉粽":{kcal:250,unit:180,desc:"1个约180g",cat:"🍲 菜肴·中西餐"}, "豆沙粽":{kcal:220,unit:180,desc:"1个约180g",cat:"🍲 菜肴·中西餐"}, "白粽":{kcal:180,unit:150,desc:"1个约150g",cat:"🍲 菜肴·中西餐"}, "青团":{kcal:250,unit:60,desc:"1个约60g",cat:"🍲 菜肴·中西餐"}, "月饼(豆沙)":{kcal:400,unit:80,desc:"1个约80g",cat:"🍲 菜肴·中西餐"}, "月饼(五仁)":{kcal:420,unit:80,desc:"1个约80g",cat:"🍲 菜肴·中西餐"},
+  "茶叶蛋(卤)":{kcal:144,unit:50,desc:"1个约50g",cat:"🍲 菜肴·中西餐"}, "烧饼夹肉":{kcal:400,unit:150,desc:"1个约150g",cat:"🍲 菜肴·中西餐"}, "菜煎饼":{kcal:280,unit:200,desc:"1个约200g",cat:"🍲 菜肴·中西餐"}, "灌汤包":{kcal:220,unit:60,desc:"1个约60g",cat:"🍲 菜肴·中西餐"}, "叉烧包":{kcal:230,unit:70,desc:"1个约70g",cat:"🍲 菜肴·中西餐"}, "奶黄包":{kcal:250,unit:70,desc:"1个约70g",cat:"🍲 菜肴·中西餐"},
+  /* ================= 扩充：坚果/零食/甜品 ================= */
+  "开心果":{kcal:562,unit:20,desc:"1小把约20g",cat:"🍲 菜肴·中西餐"}, "夏威夷果":{kcal:718,unit:20,desc:"几颗约20g",cat:"🍲 菜肴·中西餐"}, "松子":{kcal:640,unit:15,desc:"1小把约15g",cat:"🍲 菜肴·中西餐"}, "碧根果":{kcal:691,unit:20,desc:"几颗约20g",cat:"🍲 菜肴·中西餐"}, "榛子":{kcal:628,unit:20,desc:"1小把约20g",cat:"🍲 菜肴·中西餐"}, "南瓜子":{kcal:566,unit:15,desc:"1小把约15g",cat:"🍲 菜肴·中西餐"},
+  "牛肉干":{kcal:307,unit:30,desc:"1小包约30g",cat:"🍲 菜肴·中西餐"}, "猪肉脯":{kcal:400,unit:30,desc:"1片约30g",cat:"🍲 菜肴·中西餐"}, "鱼干":{kcal:210,unit:30,desc:"1份约30g",cat:"🍲 菜肴·中西餐"}, "海苔":{kcal:177,unit:5,desc:"1包约5g",cat:"🍲 菜肴·中西餐"}, "紫菜":{kcal:207,unit:5,desc:"1撮约5g",cat:"🍲 菜肴·中西餐"}, "锅巴(小吃)":{kcal:512,unit:30,desc:"1小包约30g",cat:"🍲 菜肴·中西餐"},
+  "提拉米苏":{kcal:280,unit:80,desc:"1块约80g",cat:"🍲 菜肴·中西餐"}, "芝士蛋糕":{kcal:321,unit:80,desc:"1块约80g",cat:"🍲 菜肴·中西餐"}, "慕斯蛋糕":{kcal:290,unit:80,desc:"1块约80g",cat:"🍲 菜肴·中西餐"}, "红丝绒蛋糕":{kcal:360,unit:80,desc:"1块约80g",cat:"🍲 菜肴·中西餐"}, "蛋黄酥":{kcal:350,unit:60,desc:"1个约60g",cat:"🍲 菜肴·中西餐"}, "老婆饼":{kcal:420,unit:60,desc:"1个约60g",cat:"🍲 菜肴·中西餐"},
+  "双皮奶":{kcal:110,unit:150,desc:"1碗约150g",cat:"🍲 菜肴·中西餐"}, "杨枝甘露":{kcal:150,unit:250,desc:"1杯约250g",cat:"🍲 菜肴·中西餐"}, "芋圆":{kcal:200,unit:150,desc:"1份约150g",cat:"🍲 菜肴·中西餐"}, "烧仙草":{kcal:130,unit:250,desc:"1碗约250g",cat:"🍲 菜肴·中西餐"}, "红豆沙":{kcal:120,unit:150,desc:"1碗约150g",cat:"🍲 菜肴·中西餐"}, "绿豆沙":{kcal:110,unit:150,desc:"1碗约150g",cat:"🍲 菜肴·中西餐"},
+  /* ================= 扩充：调味/酱料(常忽略的隐形热量) ================= */
+  "食用油":{kcal:899,unit:10,desc:"1勺约10g",cat:"🍲 菜肴·中西餐"}, "橄榄油":{kcal:899,unit:10,desc:"1勺约10g",cat:"🍲 菜肴·中西餐"}, "香油":{kcal:898,unit:5,desc:"1勺约5g",cat:"🍲 菜肴·中西餐"}, "花生酱":{kcal:588,unit:15,desc:"1勺约15g",cat:"🍲 菜肴·中西餐"}, "芝麻酱":{kcal:630,unit:15,desc:"1勺约15g",cat:"🍲 菜肴·中西餐"}, "沙拉酱":{kcal:680,unit:15,desc:"1勺约15g",cat:"🍲 菜肴·中西餐"},
+  "番茄酱":{kcal:85,unit:15,desc:"1勺约15g",cat:"🍲 菜肴·中西餐"}, "蚝油":{kcal:114,unit:10,desc:"1勺约10g",cat:"🍲 菜肴·中西餐"}, "白糖":{kcal:400,unit:10,desc:"1勺约10g",cat:"🍲 菜肴·中西餐"}, "蜂蜜":{kcal:321,unit:15,desc:"1勺约15g",cat:"🍲 菜肴·中西餐"}, "辣椒油":{kcal:830,unit:10,desc:"1勺约10g",cat:"🍲 菜肴·中西餐"}, "蛋黄酱":{kcal:680,unit:15,desc:"1勺约15g",cat:"🍲 菜肴·中西餐"}
+};
+/* ============ 外部「连锁快餐 / 外食榜」食物库 ============ */
+/* 数据来源：各品牌官网营养计算器 / fatsecret / 公开测评（2024-2026），
+   均为「一份成品」的真实参考热量，比内置每100g估算更准、更贴近实际外食。
+   结构：kcal=一份热量(千卡); per="份"; brand=品牌; desc=一份的份量说明。
+   添加时 grams 字段表示「吃了几份」（默认1份），计算 = 份数 × kcal。 */
+const FASTFOOD = {
+  /* ---- 麦当劳 ---- */
+  "麦当劳·麦辣鸡腿堡":{kcal:470,per:"份",brand:"麦当劳",desc:"1个约210g",cat:"麦当劳"},
+  "麦当劳·板烧鸡腿堡":{kcal:416,per:"份",brand:"麦当劳",desc:"1个约210g",cat:"麦当劳"},
+  "麦当劳·巨无霸":{kcal:500,per:"份",brand:"麦当劳",desc:"1个约215g",cat:"麦当劳"},
+  "麦当劳·双层吉士堡":{kcal:440,per:"份",brand:"麦当劳",desc:"1个约170g",cat:"麦当劳"},
+  "麦当劳·麦香鸡":{kcal:400,per:"份",brand:"麦当劳",desc:"1个约160g",cat:"麦当劳"},
+  "麦当劳·薯条(小)":{kcal:226,per:"份",brand:"麦当劳",desc:"小份约70g",cat:"麦当劳"},
+  "麦当劳·薯条(中)":{kcal:290,per:"份",brand:"麦当劳",desc:"中份约110g",cat:"麦当劳"},
+  "麦当劳·薯条(大)":{kcal:389,per:"份",brand:"麦当劳",desc:"大份约150g",cat:"麦当劳"},
+  "麦当劳·麦乐鸡(6块)":{kcal:266,per:"份",brand:"麦当劳",desc:"6块约100g",cat:"麦当劳"},
+  "麦当劳·麦辣鸡翅(2块)":{kcal:200,per:"份",brand:"麦当劳",desc:"2块约90g",cat:"麦当劳"},
+  "麦当劳·玉米杯(大)":{kcal:126,per:"份",brand:"麦当劳",desc:"大杯约120g",cat:"麦当劳"},
+  "麦当劳·圆筒冰淇淋":{kcal:125,per:"份",brand:"麦当劳",desc:"1个",cat:"麦当劳"},
+  "麦当劳·苹果派":{kcal:220,per:"份",brand:"麦当劳",desc:"1个",cat:"麦当劳"},
+  "麦当劳·无糖可乐":{kcal:0,per:"份",brand:"麦当劳",desc:"1罐330ml",cat:"麦当劳"},
+  /* ---- 肯德基 ---- */
+  "肯德基·香辣鸡腿堡":{kcal:443,per:"份",brand:"肯德基",desc:"1个约210g",cat:"肯德基"},
+  "肯德基·劲脆鸡腿堡":{kcal:590,per:"份",brand:"肯德基",desc:"1个约220g",cat:"肯德基"},
+  "肯德基·新奥尔良烤鸡腿堡":{kcal:443,per:"份",brand:"肯德基",desc:"1个约210g",cat:"肯德基"},
+  "肯德基·老北京鸡肉卷":{kcal:467,per:"份",brand:"肯德基",desc:"1卷约180g",cat:"肯德基"},
+  "肯德基·吮指原味鸡(1块)":{kcal:320,per:"份",brand:"肯德基",desc:"1块约100g",cat:"肯德基"},
+  "肯德基·黄金鸡块(6块)":{kcal:270,per:"份",brand:"肯德基",desc:"6块约100g(45/块)",cat:"肯德基"},
+  "肯德基·奥尔良烤翅(1只)":{kcal:129,per:"份",brand:"肯德基",desc:"1只约50g",cat:"肯德基"},
+  "肯德基·香辣鸡翅(1对)":{kcal:196,per:"份",brand:"肯德基",desc:"1对约90g",cat:"肯德基"},
+  "肯德基·薯条(中)":{kcal:320,per:"份",brand:"肯德基",desc:"中份约100g",cat:"肯德基"},
+  "肯德基·蛋挞":{kcal:290,per:"份",brand:"肯德基",desc:"1个",cat:"肯德基"},
+  /* ---- 正新鸡排 ---- */
+  "正新鸡排·香辣鸡排(1份)":{kcal:596,per:"份",brand:"正新鸡排",desc:"1份约244g",cat:"正新鸡排"},
+  "正新鸡排·无骨鸡柳":{kcal:329,per:"份",brand:"正新鸡排",desc:"1份约200g",cat:"正新鸡排"},
+  "正新鸡排·香酥鸡腿":{kcal:195,per:"份",brand:"正新鸡排",desc:"1个约110g",cat:"正新鸡排"},
+  "正新鸡排·薯条":{kcal:372,per:"份",brand:"正新鸡排",desc:"1份约125g",cat:"正新鸡排"},
+  "正新鸡排·甘梅地瓜":{kcal:332,per:"份",brand:"正新鸡排",desc:"1份约200g",cat:"正新鸡排"},
+  "正新鸡排·鸡肉串":{kcal:143,per:"份",brand:"正新鸡排",desc:"1串",cat:"正新鸡排"},
+  "正新鸡排·石锅肠":{kcal:180,per:"份",brand:"正新鸡排",desc:"1根",cat:"正新鸡排"},
+  "正新鸡排·拉丝芝士棒":{kcal:355,per:"份",brand:"正新鸡排",desc:"1根",cat:"正新鸡排"},
+  /* ---- 其他常见外食 ---- */
+  "必胜客·夏威夷披萨(1角)":{kcal:250,per:"份",brand:"必胜客",desc:"1角约100g",cat:"必胜客"},
+  "星巴克·焦糖玛奇朵(中)":{kcal:250,per:"份",brand:"星巴克",desc:"1杯约350ml",cat:"星巴克"},
+  "瑞幸·生椰拿铁(大)":{kcal:170,per:"份",brand:"瑞幸",desc:"1杯约450ml",cat:"瑞幸"},
+  "蜜雪冰城·柠檬水(大)":{kcal:180,per:"份",brand:"蜜雪冰城",desc:"1杯约700ml",cat:"蜜雪冰城"},
+  "蜜雪冰城·珍珠奶茶(大)":{kcal:350,per:"份",brand:"蜜雪冰城",desc:"1杯约700ml",cat:"蜜雪冰城"},
+  "沙县·蒸饺(1份)":{kcal:220,per:"份",brand:"沙县",desc:"1份约8个",cat:"沙县"},
+  "兰州拉面·牛肉面(1碗)":{kcal:450,per:"份",brand:"兰州拉面",desc:"1碗约500g",cat:"兰州拉面"},
+  "黄焖鸡米饭(1份)":{kcal:600,per:"份",brand:"黄焖鸡",desc:"1份约600g",cat:"黄焖鸡"},
+  /* ---- 麦当劳(补) ---- */
+  "麦当劳·吉士汉堡":{kcal:301,per:"份",brand:"麦当劳",desc:"1个",cat:"麦当劳"}, "麦当劳·双吉士":{kcal:440,per:"份",brand:"麦当劳",desc:"1个",cat:"麦当劳"},
+  "麦当劳·麦香鱼":{kcal:343,per:"份",brand:"麦当劳",desc:"1个",cat:"麦当劳"}, "麦当劳·板烧鸡腿堡(辣)":{kcal:416,per:"份",brand:"麦当劳",desc:"1个",cat:"麦当劳"},
+  "麦当劳·鸡块(4块)":{kcal:190,per:"份",brand:"麦当劳",desc:"4块",cat:"麦当劳"}, "麦当劳·麦辣鸡翅(1块)":{kcal:100,per:"份",brand:"麦当劳",desc:"1块",cat:"麦当劳"},
+  "麦当劳·菠萝派":{kcal:230,per:"份",brand:"麦当劳",desc:"1个",cat:"麦当劳"}, "麦当劳·麦旋风(OREO)":{kcal:358,per:"份",brand:"麦当劳",desc:"1杯",cat:"麦当劳"},
+  "麦当劳·草莓新地":{kcal:280,per:"份",brand:"麦当劳",desc:"1杯",cat:"麦当劳"}, "麦当劳·美汁源酷儿":{kcal:120,per:"份",brand:"麦当劳",desc:"1瓶",cat:"麦当劳"},
+  "麦当劳·橙汁(鲜)":{kcal:100,per:"份",brand:"麦当劳",desc:"1杯",cat:"麦当劳"}, "麦当劳·薯饼":{kcal:230,per:"份",brand:"麦当劳",desc:"2块",cat:"麦当劳"},
+  /* ---- 肯德基(补) ---- */
+  "肯德基·劲脆鸡腿堡(小)":{kcal:443,per:"份",brand:"肯德基",desc:"1个",cat:"肯德基"}, "肯德基·芝士鸡肉堡":{kcal:450,per:"份",brand:"肯德基",desc:"1个",cat:"肯德基"},
+  "肯德基·深海鳕鱼堡":{kcal:411,per:"份",brand:"肯德基",desc:"1个",cat:"肯德基"}, "肯德基·汁汁嫩牛堡(单层)":{kcal:341,per:"份",brand:"肯德基",desc:"1个",cat:"肯德基"},
+  "肯德基·芝士安格斯牛堡":{kcal:623,per:"份",brand:"肯德基",desc:"1个",cat:"肯德基"}, "肯德基·脆皮大鸡腿":{kcal:350,per:"份",brand:"肯德基",desc:"1个",cat:"肯德基"},
+  "肯德基·黄金鸡块(3块)":{kcal:135,per:"份",brand:"肯德基",desc:"3块",cat:"肯德基"}, "肯德基·鸡米花(大)":{kcal:330,per:"份",brand:"肯德基",desc:"1份",cat:"肯德基"},
+  "肯德基·薯条(小)":{kcal:230,per:"份",brand:"肯德基",desc:"小份",cat:"肯德基"}, "肯德基·薯条(大)":{kcal:410,per:"份",brand:"肯德基",desc:"大份",cat:"肯德基"},
+  "肯德基·红豆派":{kcal:240,per:"份",brand:"肯德基",desc:"1个",cat:"肯德基"}, "肯德基·圣代":{kcal:230,per:"份",brand:"肯德基",desc:"1杯",cat:"肯德基"},
+  /* ---- 塔斯汀 / 华莱士 / 德克士 ---- */
+  "塔斯汀·北京烤鸭堡":{kcal:280,per:"份",brand:"塔斯汀",desc:"1个",cat:"塔斯汀"}, "塔斯汀·香辣鸡腿堡":{kcal:300,per:"份",brand:"塔斯汀",desc:"1个",cat:"塔斯汀"},
+  "塔斯汀·培根鸡蛋堡":{kcal:310,per:"份",brand:"塔斯汀",desc:"1个",cat:"塔斯汀"}, "华莱士·鸡肉卷":{kcal:300,per:"份",brand:"华莱士",desc:"1个",cat:"塔斯汀"},
+  "华莱士·香辣鸡腿堡":{kcal:420,per:"份",brand:"华莱士",desc:"1个",cat:"华莱士"}, "德克士·魔法鸡块(5块)":{kcal:250,per:"份",brand:"德克士",desc:"5块",cat:"华莱士"},
+  "德克士·照烧鸡肉饭":{kcal:560,per:"份",brand:"德克士",desc:"1份",cat:"德克士"},
+  /* ---- 必胜客 / 达美乐 / 披萨 ---- */
+  "必胜客·超级至尊披萨(1角)":{kcal:280,per:"份",brand:"必胜客",desc:"1角约100g",cat:"必胜客"}, "必胜客·芝心披萨(1角)":{kcal:300,per:"份",brand:"必胜客",desc:"1角约100g",cat:"必胜客"},
+  "必胜客·鸡翅(1对)":{kcal:220,per:"份",brand:"必胜客",desc:"1对",cat:"必胜客"}, "必胜客·提拉米苏":{kcal:320,per:"份",brand:"必胜客",desc:"1份",cat:"必胜客"},
+  "达美乐·披萨(1角)":{kcal:260,per:"份",brand:"达美乐",desc:"1角约100g",cat:"达美乐"}, "棒约翰·披萨(1角)":{kcal:250,per:"份",brand:"棒约翰",desc:"1角约100g",cat:"达美乐"},
+  /* ---- 星巴克 / 瑞幸 / 库迪 / 便利店咖啡 ---- */
+  "星巴克·美式(中)":{kcal:15,per:"份",brand:"星巴克",desc:"1杯约350ml",cat:"星巴克"}, "星巴克·拿铁(中)":{kcal:150,per:"份",brand:"星巴克",desc:"1杯约350ml",cat:"星巴克"},
+  "星巴克·燕麦拿铁(中)":{kcal:180,per:"份",brand:"星巴克",desc:"1杯约350ml",cat:"星巴克"}, "星巴克·星冰乐(中)":{kcal:300,per:"份",brand:"星巴克",desc:"1杯约400ml",cat:"星巴克"},
+  "星巴克·芝士蛋糕":{kcal:350,per:"份",brand:"星巴克",desc:"1块",cat:"星巴克"}, "星巴克·麦芬":{kcal:350,per:"份",brand:"星巴克",desc:"1个",cat:"星巴克"},
+  "瑞幸·美式(大)":{kcal:10,per:"份",brand:"瑞幸",desc:"1杯约450ml",cat:"瑞幸"}, "瑞幸·厚乳拿铁(大)":{kcal:200,per:"份",brand:"瑞幸",desc:"1杯约450ml",cat:"瑞幸"},
+  "瑞幸·丝绒拿铁(大)":{kcal:190,per:"份",brand:"瑞幸",desc:"1杯约450ml",cat:"瑞幸"}, "库迪·拿铁(大)":{kcal:180,per:"份",brand:"库迪",desc:"1杯约450ml",cat:"瑞幸"},
+  /* ---- 新茶饮：喜茶 / 霸王茶姬 / 茶百道 / 奈雪 ---- */
+  "喜茶·多肉葡萄(中)":{kcal:300,per:"份",brand:"喜茶",desc:"1杯约500ml",cat:"喜茶"}, "喜茶·芝芝莓莓(中)":{kcal:320,per:"份",brand:"喜茶",desc:"1杯约500ml",cat:"喜茶"},
+  "喜茶·绿妍轻茶(中)":{kcal:80,per:"份",brand:"喜茶",desc:"1杯约500ml",cat:"喜茶"}, "霸王茶姬·伯牙绝弦(中)":{kcal:160,per:"份",brand:"霸王茶姬",desc:"1杯约500ml",cat:"喜茶"},
+  "霸王茶姬·花田乌龙(中)":{kcal:150,per:"份",brand:"霸王茶姬",desc:"1杯约500ml",cat:"霸王茶姬"}, "茶百道·杨枝甘露(中)":{kcal:280,per:"份",brand:"茶百道",desc:"1杯约500ml",cat:"霸王茶姬"},
+  "奈雪·霸气草莓(中)":{kcal:260,per:"份",brand:"奈雪",desc:"1杯约500ml",cat:"奈雪"}, "蜜雪冰城·满杯红柚(大)":{kcal:220,per:"份",brand:"蜜雪冰城",desc:"1杯约700ml",cat:"奈雪"},
+  /* ---- 便利店: 全家/罗森/7-11 ---- */
+  "全家·饭团(海苔)":{kcal:200,per:"份",brand:"全家",desc:"1个",cat:"全家"}, "全家·关东煮(1串)":{kcal:50,per:"份",brand:"全家",desc:"1串",cat:"全家"},
+  "罗森·寿司拼盘":{kcal:300,per:"份",brand:"罗森",desc:"1盒",cat:"罗森"}, "7-11·便当(咖喱鸡)":{kcal:550,per:"份",brand:"7-11",desc:"1份",cat:"罗森"},
+  "便利店·三明治":{kcal:280,per:"份",brand:"便利店",desc:"1个",cat:"便利店"}, "便利店·沙拉杯":{kcal:120,per:"份",brand:"便利店",desc:"1杯",cat:"便利店"},
+  /* ---- 火锅 / 烧烤 / 串串 ---- */
+  "火锅·麻辣锅底(1份)":{kcal:300,per:"份",brand:"火锅",desc:"1锅底",cat:"火锅"}, "火锅·清汤锅底(1份)":{kcal:80,per:"份",brand:"火锅",desc:"1锅底",cat:"火锅"},
+  "火锅·肥牛卷(1盘)":{kcal:350,per:"份",brand:"火锅",desc:"1盘约150g",cat:"火锅"}, "火锅·虾滑(1份)":{kcal:120,per:"份",brand:"火锅",desc:"1份约100g",cat:"火锅"},
+  "火锅·午餐肉(1盘)":{kcal:250,per:"份",brand:"火锅",desc:"1盘约100g",cat:"火锅"}, "火锅·宽粉(1份)":{kcal:200,per:"份",brand:"火锅",desc:"1份约150g",cat:"火锅"},
+  "烧烤·羊肉串(1串)":{kcal:90,per:"份",brand:"烧烤",desc:"1串约50g",cat:"烧烤"}, "烧烤·烤五花(1串)":{kcal:120,per:"份",brand:"烧烤",desc:"1串约50g",cat:"烧烤"},
+  "烧烤·烤金针菇(1份)":{kcal:150,per:"份",brand:"烧烤",desc:"1份",cat:"烧烤"}, "烧烤·烤茄子(1份)":{kcal:180,per:"份",brand:"烧烤",desc:"1份",cat:"烧烤"},
+  "串串香(1串)":{kcal:50,per:"份",brand:"串串",desc:"1串约30g",cat:"串串"},
+  /* ---- 日料 / 韩餐 / 西餐 ---- */
+  "日料·寿司拼盘(1份)":{kcal:400,per:"份",brand:"日料",desc:"1份约250g",cat:"日料"}, "日料·味增汤(1碗)":{kcal:50,per:"份",brand:"日料",desc:"1碗",cat:"日料"},
+  "日料·天妇罗拼盘":{kcal:450,per:"份",brand:"日料",desc:"1份",cat:"日料"}, "日料·拉面(豚骨1碗)":{kcal:550,per:"份",brand:"日料",desc:"1碗",cat:"日料"},
+  "韩餐·部队锅(1人)":{kcal:500,per:"份",brand:"韩餐",desc:"1人份",cat:"韩餐"}, "韩餐·石锅拌饭(1份)":{kcal:600,per:"份",brand:"韩餐",desc:"1份",cat:"韩餐"},
+  "韩餐·炸鸡(1份)":{kcal:700,per:"份",brand:"韩餐",desc:"1份约300g",cat:"韩餐"}, "韩餐·炒年糕(1份)":{kcal:400,per:"份",brand:"韩餐",desc:"1份",cat:"韩餐"},
+  "西餐·牛排套餐(1份)":{kcal:700,per:"份",brand:"西餐",desc:"1份",cat:"西餐"}, "西餐·沙拉碗(1份)":{kcal:350,per:"份",brand:"西餐",desc:"1份",cat:"西餐"},
+  /* ---- 中式简餐 / 小吃 ---- */
+  "沙县·拌面(1份)":{kcal:400,per:"份",brand:"沙县",desc:"1份",cat:"沙县"}, "沙县·炖罐(1份)":{kcal:200,per:"份",brand:"沙县",desc:"1盅",cat:"沙县"},
+  "兰州拉面·牛肉拌面(1碗)":{kcal:550,per:"份",brand:"兰州拉面",desc:"1碗",cat:"兰州拉面"}, "真功夫·蒸饭(1份)":{kcal:500,per:"份",brand:"真功夫",desc:"1份",cat:"兰州拉面"},
+  "永和·豆浆(1杯)":{kcal:120,per:"份",brand:"永和",desc:"1杯",cat:"永和"}, "永和·油条(1根)":{kcal:230,per:"份",brand:"永和",desc:"1根",cat:"永和"},
+  "煎饼果子(1套)":{kcal:350,per:"份",brand:"小吃",desc:"1套",cat:"小吃"}, "肉夹馍(1个)":{kcal:250,per:"份",brand:"小吃",desc:"1个",cat:"小吃"},
+  "麻辣烫(1碗)":{kcal:450,per:"份",brand:"小吃",desc:"1碗约500g",cat:"小吃"}, "麻辣香锅(1人份)":{kcal:600,per:"份",brand:"小吃",desc:"1人份",cat:"小吃"},
+  "饺子馆·水饺(1两)":{kcal:220,per:"份",brand:"小吃",desc:"1两约6个",cat:"小吃"}, "煲仔饭(1份)":{kcal:550,per:"份",brand:"小吃",desc:"1份",cat:"小吃"},
+  "凉皮(1份)":{kcal:280,per:"份",brand:"小吃",desc:"1份",cat:"小吃"}, "肉包(1个)":{kcal:230,per:"份",brand:"小吃",desc:"1个",cat:"小吃"},
+  /* ================= 扩充：麦当劳(全系) ================= */
+  "麦当劳·安格斯牛肉堡":{kcal:600,per:"份",brand:"麦当劳",desc:"1个",cat:"麦当劳"}, "麦当劳·麦辣鸡腿堡(单)":{kcal:470,per:"份",brand:"麦当劳",desc:"1个",cat:"麦当劳"},
+  "麦当劳·培根安格斯":{kcal:640,per:"份",brand:"麦当劳",desc:"1个",cat:"麦当劳"}, "麦当劳·板烧至尊":{kcal:520,per:"份",brand:"麦当劳",desc:"1个",cat:"麦当劳"},
+  "麦当劳·麦香鸡(辣)":{kcal:400,per:"份",brand:"麦当劳",desc:"1个",cat:"麦当劳"}, "麦当劳·鳕鱼堡":{kcal:343,per:"份",brand:"麦当劳",desc:"1个",cat:"麦当劳"},
+  "麦当劳·麦乐鸡(10块)":{kcal:435,per:"份",brand:"麦当劳",desc:"10块",cat:"麦当劳"}, "麦当劳·麦乐鸡(20块)":{kcal:870,per:"份",brand:"麦当劳",desc:"20块",cat:"麦当劳"},
+  "麦当劳·麦辣鸡翅(4块)":{kcal:400,per:"份",brand:"麦当劳",desc:"4块",cat:"麦当劳"}, "麦当劳·薯饼(单块)":{kcal:115,per:"份",brand:"麦当劳",desc:"1块",cat:"麦当劳"},
+  "麦当劳·板烧鸡腿堡套餐":{kcal:820,per:"份",brand:"麦当劳",desc:"含中薯中可",cat:"麦当劳"}, "麦当劳·巨无霸套餐":{kcal:900,per:"份",brand:"麦当劳",desc:"含中薯中可",cat:"麦当劳"},
+  "麦当劳·奥利奥麦旋风":{kcal:358,per:"份",brand:"麦当劳",desc:"1杯",cat:"麦当劳"}, "麦当劳·抹茶麦旋风":{kcal:340,per:"份",brand:"麦当劳",desc:"1杯",cat:"麦当劳"},
+  "麦当劳·香芋派":{kcal:230,per:"份",brand:"麦当劳",desc:"1个",cat:"麦当劳"}, "麦当劳·冰淇淋新地(巧克力)":{kcal:290,per:"份",brand:"麦当劳",desc:"1杯",cat:"麦当劳"},
+  "麦当劳·可乐(中)":{kcal:140,per:"份",brand:"麦当劳",desc:"1杯",cat:"麦当劳"}, "麦当劳·可乐(大)":{kcal:200,per:"份",brand:"麦当劳",desc:"1杯",cat:"麦当劳"},
+  "麦当劳·雪碧(中)":{kcal:150,per:"份",brand:"麦当劳",desc:"1杯",cat:"麦当劳"}, "麦当劳·热巧克力":{kcal:170,per:"份",brand:"麦当劳",desc:"1杯",cat:"麦当劳"},
+  "麦当劳·热拿铁":{kcal:120,per:"份",brand:"麦当劳",desc:"1杯",cat:"麦当劳"}, "麦当劳·美式(McCafe)":{kcal:10,per:"份",brand:"麦当劳",desc:"1杯",cat:"麦当劳"},
+  "麦当劳·早餐满分卷":{kcal:400,per:"份",brand:"麦当劳",desc:"1个",cat:"麦当劳"}, "麦当劳·猪柳蛋堡":{kcal:430,per:"份",brand:"麦当劳",desc:"1个",cat:"麦当劳"},
+  "麦当劳·满福堡(蛋)":{kcal:300,per:"份",brand:"麦当劳",desc:"1个",cat:"麦当劳"}, "麦当劳·松饼(枫浆)":{kcal:350,per:"份",brand:"麦当劳",desc:"1份",cat:"麦当劳"},
+  /* ================= 扩充：肯德基(全系) ================= */
+  "肯德基·原味鸡(2块)":{kcal:640,per:"份",brand:"肯德基",desc:"2块",cat:"肯德基"}, "肯德基·辣翅(2块)":{kcal:258,per:"份",brand:"肯德基",desc:"2块",cat:"肯德基"},
+  "肯德基·奥尔良烤翅(2只)":{kcal:258,per:"份",brand:"肯德基",desc:"2只",cat:"肯德基"}, "肯德基·帕尼尼":{kcal:400,per:"份",brand:"肯德基",desc:"1个",cat:"肯德基"},
+  "肯德基·葡式蛋挞":{kcal:200,per:"份",brand:"肯德基",desc:"1个",cat:"肯德基"}, "肯德基·烤鸡腿饭":{kcal:520,per:"份",brand:"肯德基",desc:"1份",cat:"肯德基"},
+  "肯德基·嫩牛五方":{kcal:410,per:"份",brand:"肯德基",desc:"1个",cat:"肯德基"}, "肯德基·墨西哥鸡肉卷":{kcal:467,per:"份",brand:"肯德基",desc:"1卷",cat:"肯德基"},
+  "肯德基·薯条(小)套餐":{kcal:230,per:"份",brand:"肯德基",desc:"小份",cat:"肯德基"}, "肯德基·全家桶(9块)":{kcal:2880,per:"份",brand:"肯德基",desc:"9块鸡",cat:"肯德基"},
+  "肯德基·鸡米花(小)":{kcal:200,per:"份",brand:"肯德基",desc:"1份",cat:"肯德基"}, "肯德基·上校鸡块(5块)":{kcal:225,per:"份",brand:"肯德基",desc:"5块",cat:"肯德基"},
+  "肯德基·可乐(中)":{kcal:140,per:"份",brand:"肯德基",desc:"1杯",cat:"肯德基"}, "肯德基·芙蓉青提汁":{kcal:200,per:"份",brand:"肯德基",desc:"1杯",cat:"肯德基"},
+  "肯德基·醇香拿铁":{kcal:130,per:"份",brand:"肯德基",desc:"1杯",cat:"肯德基"}, "肯德基·豆浆":{kcal:110,per:"份",brand:"肯德基",desc:"1杯",cat:"肯德基"},
+  "肯德基·油条":{kcal:230,per:"份",brand:"肯德基",desc:"1根",cat:"肯德基"}, "肯德基·皮蛋瘦肉粥":{kcal:150,per:"份",brand:"肯德基",desc:"1碗",cat:"肯德基"},
+  "肯德基·鸡肉饭团":{kcal:280,per:"份",brand:"肯德基",desc:"1个",cat:"肯德基"}, "肯德基·芝士薯条":{kcal:420,per:"份",brand:"肯德基",desc:"1份",cat:"肯德基"},
+  /* ================= 扩充：汉堡王/德克士/华莱士/塔斯汀 ================= */
+  "汉堡王·皇堡":{kcal:660,per:"份",brand:"汉堡王",desc:"1个",cat:"汉堡王"}, "汉堡王·安格斯厚牛堡":{kcal:700,per:"份",brand:"汉堡王",desc:"1个",cat:"汉堡王"},
+  "汉堡王·培根皇堡":{kcal:720,per:"份",brand:"汉堡王",desc:"1个",cat:"汉堡王"}, "汉堡王·芝士皇堡":{kcal:710,per:"份",brand:"汉堡王",desc:"1个",cat:"汉堡王"},
+  "汉堡王·鸡肉堡":{kcal:520,per:"份",brand:"汉堡王",desc:"1个",cat:"汉堡王"}, "汉堡王·薯条(中)":{kcal:330,per:"份",brand:"汉堡王",desc:"中份",cat:"汉堡王"},
+  "汉堡王·洋葱圈":{kcal:400,per:"份",brand:"汉堡王",desc:"1份",cat:"汉堡王"}, "汉堡王·鸡块(9块)":{kcal:400,per:"份",brand:"汉堡王",desc:"9块",cat:"汉堡王"},
+  "德克士·脆皮炸鸡(1块)":{kcal:280,per:"份",brand:"德克士",desc:"1块",cat:"德克士"}, "德克士·手枪腿":{kcal:230,per:"份",brand:"德克士",desc:"1个",cat:"德克士"},
+  "德克士·脆皮鸡腿堡":{kcal:500,per:"份",brand:"德克士",desc:"1个",cat:"德克士"}, "德克士·鳕鱼堡":{kcal:420,per:"份",brand:"德克士",desc:"1个",cat:"德克士"},
+  "德克士·薯条(中)":{kcal:300,per:"份",brand:"德克士",desc:"中份",cat:"德克士"}, "华莱士·全鸡(1只)":{kcal:1200,per:"份",brand:"华莱士",desc:"1只",cat:"德克士"},
+  "华莱士·牛肉堡":{kcal:400,per:"份",brand:"华莱士",desc:"1个",cat:"华莱士"}, "华莱士·炸鸡(1块)":{kcal:260,per:"份",brand:"华莱士",desc:"1块",cat:"华莱士"},
+  "华莱士·薯条":{kcal:280,per:"份",brand:"华莱士",desc:"1份",cat:"华莱士"}, "塔斯汀·麻婆豆腐堡":{kcal:290,per:"份",brand:"塔斯汀",desc:"1个",cat:"华莱士"},
+  "塔斯汀·藤椒鸡堡":{kcal:300,per:"份",brand:"塔斯汀",desc:"1个",cat:"塔斯汀"}, "塔斯汀·嫩牛堡":{kcal:340,per:"份",brand:"塔斯汀",desc:"1个",cat:"塔斯汀"},
+  "塔斯汀·鸡排堡":{kcal:320,per:"份",brand:"塔斯汀",desc:"1个",cat:"塔斯汀"}, "塔斯汀·薯条":{kcal:280,per:"份",brand:"塔斯汀",desc:"1份",cat:"塔斯汀"},
+  /* ================= 扩充：披萨(必胜客/达美乐/棒约翰) ================= */
+  "必胜客·榴莲披萨(1角)":{kcal:290,per:"份",brand:"必胜客",desc:"1角",cat:"必胜客"}, "必胜客·培根披萨(1角)":{kcal:270,per:"份",brand:"必胜客",desc:"1角",cat:"必胜客"},
+  "必胜客·海鲜披萨(1角)":{kcal:240,per:"份",brand:"必胜客",desc:"1角",cat:"必胜客"}, "必胜客·意面(番茄)":{kcal:400,per:"份",brand:"必胜客",desc:"1份",cat:"必胜客"},
+  "必胜客·焗饭(黑椒牛)":{kcal:600,per:"份",brand:"必胜客",desc:"1份",cat:"必胜客"}, "必胜客·薯格":{kcal:350,per:"份",brand:"必胜客",desc:"1份",cat:"必胜客"},
+  "达美乐·至尊披萨(1角)":{kcal:280,per:"份",brand:"达美乐",desc:"1角",cat:"达美乐"}, "达美乐·夏威夷(1角)":{kcal:250,per:"份",brand:"达美乐",desc:"1角",cat:"达美乐"},
+  "达美乐·芝心边(1角)":{kcal:310,per:"份",brand:"达美乐",desc:"1角",cat:"达美乐"}, "棒约翰·超级至尊(1角)":{kcal:270,per:"份",brand:"棒约翰",desc:"1角",cat:"达美乐"},
+  "尊宝披萨(1角)":{kcal:240,per:"份",brand:"尊宝",desc:"1角",cat:"尊宝"},
+  /* ================= 扩充：咖啡(星巴克/瑞幸/库迪/Manner/Tims) ================= */
+  "星巴克·卡布奇诺(中)":{kcal:120,per:"份",brand:"星巴克",desc:"1杯",cat:"星巴克"}, "星巴克·摩卡(中)":{kcal:290,per:"份",brand:"星巴克",desc:"1杯",cat:"星巴克"},
+  "星巴克·焦糖玛奇朵(大)":{kcal:320,per:"份",brand:"星巴克",desc:"1杯",cat:"星巴克"}, "星巴克·抹茶星冰乐(中)":{kcal:320,per:"份",brand:"星巴克",desc:"1杯",cat:"星巴克"},
+  "星巴克·星冰乐(可可碎片)":{kcal:400,per:"份",brand:"星巴克",desc:"1杯",cat:"星巴克"}, "星巴克·冷萃":{kcal:5,per:"份",brand:"星巴克",desc:"1杯",cat:"星巴克"},
+  "星巴克·丝绒拿铁":{kcal:280,per:"份",brand:"星巴克",desc:"1杯",cat:"星巴克"}, "星巴克·南瓜拿铁":{kcal:300,per:"份",brand:"星巴克",desc:"1杯",cat:"星巴克"},
+  "瑞幸·生椰拿铁(标准)":{kcal:170,per:"份",brand:"瑞幸",desc:"1杯",cat:"瑞幸"}, "瑞幸·陨石拿铁":{kcal:210,per:"份",brand:"瑞幸",desc:"1杯",cat:"瑞幸"},
+  "瑞幸·橙C美式":{kcal:60,per:"份",brand:"瑞幸",desc:"1杯",cat:"瑞幸"}, "瑞幸·丝绒拿铁":{kcal:200,per:"份",brand:"瑞幸",desc:"1杯",cat:"瑞幸"},
+  "瑞幸·茉莉花香拿铁":{kcal:230,per:"份",brand:"瑞幸",desc:"1杯",cat:"瑞幸"}, "瑞幸·酱香拿铁":{kcal:240,per:"份",brand:"瑞幸",desc:"1杯",cat:"瑞幸"},
+  "瑞幸·冰吸生椰拿铁":{kcal:200,per:"份",brand:"瑞幸",desc:"1杯",cat:"瑞幸"}, "库迪·生椰拿铁(大)":{kcal:180,per:"份",brand:"库迪",desc:"1杯",cat:"瑞幸"},
+  "库迪·美式(大)":{kcal:10,per:"份",brand:"库迪",desc:"1杯",cat:"库迪"}, "Manner·拿铁":{kcal:120,per:"份",brand:"Manner",desc:"1杯",cat:"库迪"},
+  "Manner·桂花拿铁":{kcal:180,per:"份",brand:"Manner",desc:"1杯",cat:"Manner"}, "Tims·拿铁":{kcal:150,per:"份",brand:"Tims",desc:"1杯",cat:"Manner"},
+  "Tims·暖阳生椰拿铁":{kcal:190,per:"份",brand:"Tims",desc:"1杯",cat:"Tims"}, "Tims·贝果(原味)":{kcal:280,per:"份",brand:"Tims",desc:"1个",cat:"Tims"},
+  /* ================= 扩充：奶茶/新茶饮(全品牌) ================= */
+  "喜茶·芝芝芒芒(中)":{kcal:340,per:"份",brand:"喜茶",desc:"1杯",cat:"喜茶"}, "喜茶·多肉青提(中)":{kcal:280,per:"份",brand:"喜茶",desc:"1杯",cat:"喜茶"},
+  "喜茶·满杯红柚(中)":{kcal:220,per:"份",brand:"喜茶",desc:"1杯",cat:"喜茶"}, "喜茶·豆豆波波茶":{kcal:300,per:"份",brand:"喜茶",desc:"1杯",cat:"喜茶"},
+  "奈雪·芝士葡萄(中)":{kcal:320,per:"份",brand:"奈雪",desc:"1杯",cat:"奈雪"}, "奈雪·霸气橙子":{kcal:260,per:"份",brand:"奈雪",desc:"1杯",cat:"奈雪"},
+  "奈雪·宝藏茶":{kcal:240,per:"份",brand:"奈雪",desc:"1杯",cat:"奈雪"}, "茶百道·芝士葡萄":{kcal:320,per:"份",brand:"茶百道",desc:"1杯",cat:"奈雪"},
+  "茶百道·豆乳玉麒麟":{kcal:350,per:"份",brand:"茶百道",desc:"1杯",cat:"茶百道"}, "古茗·超A葡萄":{kcal:280,per:"份",brand:"古茗",desc:"1杯",cat:"茶百道"},
+  "古茗·奶绿":{kcal:300,per:"份",brand:"古茗",desc:"1杯",cat:"古茗"}, "古茗·芝士奶盖茶":{kcal:280,per:"份",brand:"古茗",desc:"1杯",cat:"古茗"},
+  "沪上阿姨·血糯米奶茶":{kcal:400,per:"份",brand:"沪上阿姨",desc:"1杯",cat:"沪上阿姨"}, "沪上阿姨·杨枝甘露":{kcal:300,per:"份",brand:"沪上阿姨",desc:"1杯",cat:"沪上阿姨"},
+  "书亦烧仙草·招牌烧仙草":{kcal:350,per:"份",brand:"书亦",desc:"1杯",cat:"书亦"}, "书亦·多肉葡萄":{kcal:280,per:"份",brand:"书亦",desc:"1杯",cat:"书亦"},
+  "一点点·波霸奶茶":{kcal:380,per:"份",brand:"一点点",desc:"1杯",cat:"一点点"}, "一点点·四季奶青":{kcal:260,per:"份",brand:"一点点",desc:"1杯",cat:"一点点"},
+  "coco·珍珠奶茶":{kcal:370,per:"份",brand:"CoCo",desc:"1杯",cat:"CoCo"}, "coco·芋圆奶茶":{kcal:400,per:"份",brand:"CoCo",desc:"1杯",cat:"CoCo"},
+  "霸王茶姬·万里木兰(中)":{kcal:150,per:"份",brand:"霸王茶姬",desc:"1杯",cat:"霸王茶姬"}, "霸王茶姬·青青糯山":{kcal:200,per:"份",brand:"霸王茶姬",desc:"1杯",cat:"霸王茶姬"},
+  "蜜雪冰城·冰鲜柠檬水":{kcal:120,per:"份",brand:"蜜雪冰城",desc:"1杯",cat:"蜜雪冰城"}, "蜜雪冰城·摇摇奶昔":{kcal:250,per:"份",brand:"蜜雪冰城",desc:"1杯",cat:"蜜雪冰城"},
+  "蜜雪冰城·圣代":{kcal:200,per:"份",brand:"蜜雪冰城",desc:"1个",cat:"蜜雪冰城"}, "蜜雪冰城·冰淇淋":{kcal:150,per:"份",brand:"蜜雪冰城",desc:"1支",cat:"蜜雪冰城"},
+  /* ================= 扩充：中式简餐/快餐连锁 ================= */
+  "老乡鸡·葱油鸡(1份)":{kcal:280,per:"份",brand:"老乡鸡",desc:"1份",cat:"老乡鸡"}, "老乡鸡·肥西老母鸡汤":{kcal:150,per:"份",brand:"老乡鸡",desc:"1盅",cat:"老乡鸡"},
+  "老乡鸡·梅干菜烧肉":{kcal:400,per:"份",brand:"老乡鸡",desc:"1份",cat:"老乡鸡"}, "老乡鸡·番茄蛋汤":{kcal:60,per:"份",brand:"老乡鸡",desc:"1碗",cat:"老乡鸡"},
+  "乡村基·辣子鸡饭":{kcal:650,per:"份",brand:"乡村基",desc:"1份",cat:"乡村基"}, "乡村基·青椒肉丝饭":{kcal:550,per:"份",brand:"乡村基",desc:"1份",cat:"乡村基"},
+  "大米先生·两荤一素套餐":{kcal:700,per:"份",brand:"大米先生",desc:"1份",cat:"大米先生"}, "真功夫·香汁排骨饭":{kcal:600,per:"份",brand:"真功夫",desc:"1份",cat:"大米先生"},
+  "真功夫·冬菇蒸鸡饭":{kcal:520,per:"份",brand:"真功夫",desc:"1份",cat:"真功夫"}, "永和大王·卤肉饭":{kcal:600,per:"份",brand:"永和",desc:"1份",cat:"真功夫"},
+  "永和大王·皮蛋瘦肉粥":{kcal:150,per:"份",brand:"永和",desc:"1碗",cat:"永和"}, "吉野家·牛肉饭(标准)":{kcal:650,per:"份",brand:"吉野家",desc:"1份",cat:"永和"},
+  "吉野家·照烧鸡排饭":{kcal:600,per:"份",brand:"吉野家",desc:"1份",cat:"吉野家"}, "食其家·牛丼(中)":{kcal:670,per:"份",brand:"食其家",desc:"1份",cat:"吉野家"},
+  "和府捞面·番茄牛肉面":{kcal:500,per:"份",brand:"和府",desc:"1碗",cat:"和府"}, "遇见小面·豌杂面":{kcal:550,per:"份",brand:"遇见小面",desc:"1碗",cat:"和府"},
+  /* ================= 扩充：面食/粉/米线连锁 ================= */
+  "李先生·牛肉面":{kcal:480,per:"份",brand:"李先生",desc:"1碗",cat:"李先生"}, "味千拉面·豚骨拉面":{kcal:550,per:"份",brand:"味千",desc:"1碗",cat:"李先生"},
+  "阿香米线·砂锅米线":{kcal:500,per:"份",brand:"阿香米线",desc:"1份",cat:"阿香米线"}, "过桥米线(1份)":{kcal:550,per:"份",brand:"米线",desc:"1份",cat:"阿香米线"},
+  "重庆小面(1碗)":{kcal:500,per:"份",brand:"小面",desc:"1碗",cat:"小面"}, "热干面(1碗)":{kcal:450,per:"份",brand:"小吃",desc:"1碗",cat:"小面"},
+  "炸酱面(1碗)":{kcal:550,per:"份",brand:"小吃",desc:"1碗",cat:"小吃"}, "刀削面(1碗)":{kcal:480,per:"份",brand:"小吃",desc:"1碗",cat:"小吃"},
+  "牛肉粉(1碗)":{kcal:450,per:"份",brand:"小吃",desc:"1碗",cat:"小吃"}, "肠粉(1份)":{kcal:250,per:"份",brand:"小吃",desc:"1份",cat:"小吃"},
+  "螺蛳粉(1份·堂食)":{kcal:500,per:"份",brand:"小吃",desc:"1份",cat:"小吃"}, "酸辣粉(1份·堂食)":{kcal:450,per:"份",brand:"小吃",desc:"1份",cat:"小吃"},
+  /* ================= 扩充：火锅/烧烤/串串(连锁) ================= */
+  "海底捞·番茄锅底":{kcal:250,per:"份",brand:"海底捞",desc:"1锅",cat:"海底捞"}, "海底捞·牛肉粒":{kcal:100,per:"份",brand:"海底捞",desc:"免费小食",cat:"海底捞"},
+  "海底捞·毛肚(1盘)":{kcal:120,per:"份",brand:"海底捞",desc:"1盘",cat:"海底捞"}, "海底捞·虾滑(1份)":{kcal:130,per:"份",brand:"海底捞",desc:"1份",cat:"海底捞"},
+  "海底捞·嫩牛肉(1盘)":{kcal:200,per:"份",brand:"海底捞",desc:"1盘",cat:"海底捞"}, "海底捞·捞派土豆片":{kcal:90,per:"份",brand:"海底捞",desc:"1盘",cat:"海底捞"},
+  "呷哺呷哺·套餐(1人)":{kcal:700,per:"份",brand:"呷哺",desc:"1人份",cat:"呷哺"}, "小龙坎·麻辣锅底":{kcal:350,per:"份",brand:"小龙坎",desc:"1锅",cat:"呷哺"},
+  "杨国福麻辣烫(1碗)":{kcal:500,per:"份",brand:"杨国福",desc:"1碗",cat:"杨国福"}, "张亮麻辣烫(1碗)":{kcal:500,per:"份",brand:"张亮",desc:"1碗",cat:"杨国福"},
+  "烧烤·烤羊肉串(5串)":{kcal:450,per:"份",brand:"烧烤",desc:"5串",cat:"烧烤"}, "烧烤·烤鸡翅(2个)":{kcal:220,per:"份",brand:"烧烤",desc:"2个",cat:"烧烤"},
+  "烧烤·烤韭菜(1把)":{kcal:100,per:"份",brand:"烧烤",desc:"1把",cat:"烧烤"}, "烧烤·烤生蚝(1个)":{kcal:120,per:"份",brand:"烧烤",desc:"1个",cat:"烧烤"},
+  "烧烤·烤面筋(1串)":{kcal:180,per:"份",brand:"烧烤",desc:"1串",cat:"烧烤"}, "烧烤·烤玉米(1根)":{kcal:150,per:"份",brand:"烧烤",desc:"1根",cat:"烧烤"},
+  "冷锅串串(10串)":{kcal:400,per:"份",brand:"串串",desc:"10串",cat:"串串"},
+  /* ================= 扩充：早餐/包点/便利店 ================= */
+  "包子铺·鲜肉包":{kcal:230,per:"份",brand:"早餐",desc:"1个",cat:"早餐"}, "包子铺·豆沙包":{kcal:200,per:"份",brand:"早餐",desc:"1个",cat:"早餐"},
+  "早餐·豆浆油条套餐":{kcal:450,per:"份",brand:"早餐",desc:"1套",cat:"早餐"}, "早餐·胡辣汤":{kcal:150,per:"份",brand:"早餐",desc:"1碗",cat:"早餐"},
+  "早餐·小笼包(1笼)":{kcal:500,per:"份",brand:"早餐",desc:"1笼8个",cat:"早餐"}, "早餐·生煎(4个)":{kcal:480,per:"份",brand:"早餐",desc:"4个",cat:"早餐"},
+  "全家·三明治(火腿蛋)":{kcal:300,per:"份",brand:"全家",desc:"1个",cat:"全家"}, "全家·热狗":{kcal:280,per:"份",brand:"全家",desc:"1根",cat:"全家"},
+  "全家·关东煮(全套)":{kcal:250,per:"份",brand:"全家",desc:"5串",cat:"全家"}, "罗森·饭团(三文鱼)":{kcal:210,per:"份",brand:"罗森",desc:"1个",cat:"全家"},
+  "罗森·冰皮月亮蛋糕":{kcal:200,per:"份",brand:"罗森",desc:"1个",cat:"罗森"}, "7-11·三明治(蛋沙拉)":{kcal:290,per:"份",brand:"7-11",desc:"1个",cat:"罗森"},
+  "7-11·关东煮(1串)":{kcal:50,per:"份",brand:"7-11",desc:"1串",cat:"7-11"}, "便利蜂·卤味拼盘":{kcal:300,per:"份",brand:"便利蜂",desc:"1盒",cat:"7-11"},
+  "便利店·茶叶蛋":{kcal:70,per:"份",brand:"便利店",desc:"1个",cat:"便利店"}, "便利店·包子":{kcal:230,per:"份",brand:"便利店",desc:"1个",cat:"便利店"},
+  /* ================= 扩充：西式/轻食/沙拉 ================= */
+  "赛百味·金枪鱼三明治(6寸)":{kcal:480,per:"份",brand:"赛百味",desc:"6寸",cat:"赛百味"}, "赛百味·鸡胸肉三明治(6寸)":{kcal:320,per:"份",brand:"赛百味",desc:"6寸",cat:"赛百味"},
+  "赛百味·意式肉丸(6寸)":{kcal:520,per:"份",brand:"赛百味",desc:"6寸",cat:"赛百味"}, "gaga·牛油果沙拉":{kcal:350,per:"份",brand:"轻食",desc:"1份",cat:"赛百味"},
+  "轻食·鸡胸沙拉":{kcal:300,per:"份",brand:"轻食",desc:"1份",cat:"轻食"}, "轻食·三文鱼沙拉":{kcal:380,per:"份",brand:"轻食",desc:"1份",cat:"轻食"},
+  "轻食·藜麦鸡肉碗":{kcal:420,per:"份",brand:"轻食",desc:"1份",cat:"轻食"}, "轻食·全麦鸡肉卷":{kcal:350,per:"份",brand:"轻食",desc:"1个",cat:"轻食"},
+  "西餐·菲力牛排(1份)":{kcal:500,per:"份",brand:"西餐",desc:"1份",cat:"西餐"}, "西餐·意式烩饭":{kcal:550,per:"份",brand:"西餐",desc:"1份",cat:"西餐"},
+  "西餐·奶油蘑菇汤":{kcal:250,per:"份",brand:"西餐",desc:"1碗",cat:"西餐"}, "西餐·蒜香面包(2片)":{kcal:280,per:"份",brand:"西餐",desc:"2片",cat:"西餐"},
+  /* ================= 扩充：日料/韩餐 ================= */
+  "日料·三文鱼刺身(6片)":{kcal:210,per:"份",brand:"日料",desc:"6片",cat:"日料"}, "日料·鳗鱼饭":{kcal:600,per:"份",brand:"日料",desc:"1份",cat:"日料"},
+  "日料·亲子丼":{kcal:550,per:"份",brand:"日料",desc:"1份",cat:"日料"}, "日料·猪排饭":{kcal:700,per:"份",brand:"日料",desc:"1份",cat:"日料"},
+  "日料·寿喜锅(1人)":{kcal:600,per:"份",brand:"日料",desc:"1人份",cat:"日料"}, "日料·手卷(1个)":{kcal:150,per:"份",brand:"日料",desc:"1个",cat:"日料"},
+  "韩餐·辣白菜炒饭":{kcal:550,per:"份",brand:"韩餐",desc:"1份",cat:"韩餐"}, "韩餐·冷面(1碗)":{kcal:450,per:"份",brand:"韩餐",desc:"1碗",cat:"韩餐"},
+  "韩餐·大酱汤(1碗)":{kcal:120,per:"份",brand:"韩餐",desc:"1碗",cat:"韩餐"}, "韩餐·五花肉烤肉(1份)":{kcal:600,per:"份",brand:"韩餐",desc:"1份",cat:"韩餐"},
+  "韩餐·芝士排骨(1份)":{kcal:700,per:"份",brand:"韩餐",desc:"1份",cat:"韩餐"}, "韩餐·紫菜包饭(1条)":{kcal:400,per:"份",brand:"韩餐",desc:"1条",cat:"韩餐"},
+  /* ================= 扩充：甜品/烘焙/冰淇淋连锁 ================= */
+  "哈根达斯·单球":{kcal:250,per:"份",brand:"哈根达斯",desc:"1球",cat:"哈根达斯"}, "DQ·暴风雪(中)":{kcal:600,per:"份",brand:"DQ",desc:"1杯",cat:"哈根达斯"},
+  "DQ·蛋糕(1块)":{kcal:350,per:"份",brand:"DQ",desc:"1块",cat:"DQ"}, "满记甜品·杨枝甘露":{kcal:300,per:"份",brand:"满记",desc:"1份",cat:"DQ"},
+  "许留山·芒果班戟":{kcal:280,per:"份",brand:"许留山",desc:"1个",cat:"许留山"}, "鲍师傅·肉松小贝":{kcal:250,per:"份",brand:"鲍师傅",desc:"1个",cat:"许留山"},
+  "好利来·半熟芝士":{kcal:180,per:"份",brand:"好利来",desc:"1个",cat:"好利来"}, "好利来·玫瑰鲜花饼":{kcal:200,per:"份",brand:"好利来",desc:"1个",cat:"好利来"},
+  "面包新语·菠萝包":{kcal:280,per:"份",brand:"面包新语",desc:"1个",cat:"面包新语"}, "巴黎贝甜·可颂":{kcal:350,per:"份",brand:"巴黎贝甜",desc:"1个",cat:"面包新语"},
+  "85度C·芝士蛋糕":{kcal:320,per:"份",brand:"85度C",desc:"1块",cat:"85度C"}, "85度C·海盐咖啡":{kcal:200,per:"份",brand:"85度C",desc:"1杯",cat:"85度C"},
+  "泸溪河·桃酥":{kcal:250,per:"份",brand:"泸溪河",desc:"1个",cat:"泸溪河"}, "詹记·桃酥":{kcal:250,per:"份",brand:"詹记",desc:"1个",cat:"泸溪河"},
+  /* ================= 扩充：小吃/夜宵/地方特色 ================= */
+  "长沙臭豆腐(1份)":{kcal:280,per:"份",brand:"小吃",desc:"1份",cat:"小吃"}, "武汉热干面(1碗)":{kcal:450,per:"份",brand:"小吃",desc:"1碗",cat:"小吃"},
+  "南京鸭血粉丝(1碗)":{kcal:350,per:"份",brand:"小吃",desc:"1碗",cat:"小吃"}, "台湾大鸡排(1份)":{kcal:550,per:"份",brand:"小吃",desc:"1份",cat:"小吃"},
+  "章鱼小丸子(6个)":{kcal:300,per:"份",brand:"小吃",desc:"6个",cat:"小吃"}, "手抓饼加蛋(1个)":{kcal:400,per:"份",brand:"小吃",desc:"1个",cat:"小吃"},
+  "烤冷面(1份)":{kcal:400,per:"份",brand:"小吃",desc:"1份",cat:"小吃"}, "铁板鱿鱼(1串)":{kcal:200,per:"份",brand:"小吃",desc:"1串",cat:"小吃"},
+  "关东煮(1份·外食)":{kcal:250,per:"份",brand:"小吃",desc:"1份",cat:"小吃"}, "钵钵鸡(10串)":{kcal:400,per:"份",brand:"小吃",desc:"10串",cat:"小吃"},
+  "钵仔糕(1个)":{kcal:150,per:"份",brand:"小吃",desc:"1个",cat:"小吃"}, "糖油粑粑(3个)":{kcal:350,per:"份",brand:"小吃",desc:"3个",cat:"小吃"},
+  "凉粉(1碗·外食)":{kcal:200,per:"份",brand:"小吃",desc:"1碗",cat:"小吃"}, "凉虾(1碗)":{kcal:180,per:"份",brand:"小吃",desc:"1碗",cat:"小吃"},
+  "煎饼果子加双蛋(1个)":{kcal:450,per:"份",brand:"小吃",desc:"1个",cat:"小吃"}, "肉夹馍(优质·1个)":{kcal:350,per:"份",brand:"小吃",desc:"1个",cat:"小吃"},
+  "生煎包(4个·外食)":{kcal:480,per:"份",brand:"小吃",desc:"4个",cat:"小吃"}, "小笼汤包(6个)":{kcal:400,per:"份",brand:"小吃",desc:"6个",cat:"小吃"},
+  "锅盔夹肉(1个)":{kcal:450,per:"份",brand:"小吃",desc:"1个",cat:"小吃"}, "驴肉火烧(1个)":{kcal:400,per:"份",brand:"小吃",desc:"1个",cat:"小吃"},
+  /* ================= 扩充：饮料/瓶装(便利店常见) ================= */
+  "可口可乐(500ml)":{kcal:215,per:"份",brand:"饮料",desc:"1瓶",cat:"饮料"}, "百事可乐(500ml)":{kcal:220,per:"份",brand:"饮料",desc:"1瓶",cat:"饮料"},
+  "雪碧(500ml)":{kcal:210,per:"份",brand:"饮料",desc:"1瓶",cat:"饮料"}, "芬达(500ml)":{kcal:230,per:"份",brand:"饮料",desc:"1瓶",cat:"饮料"},
+  "美年达(500ml)":{kcal:230,per:"份",brand:"饮料",desc:"1瓶",cat:"饮料"}, "冰红茶(500ml)":{kcal:180,per:"份",brand:"饮料",desc:"1瓶",cat:"饮料"},
+  "绿茶饮料(500ml)":{kcal:150,per:"份",brand:"饮料",desc:"1瓶",cat:"饮料"}, "农夫山泉茶π(500ml)":{kcal:180,per:"份",brand:"饮料",desc:"1瓶",cat:"饮料"},
+  "元气森林(气泡水)":{kcal:0,per:"份",brand:"饮料",desc:"1瓶",cat:"饮料"}, "脉动(600ml)":{kcal:150,per:"份",brand:"饮料",desc:"1瓶",cat:"饮料"},
+  "红牛(250ml)":{kcal:113,per:"份",brand:"饮料",desc:"1罐",cat:"饮料"}, "东鹏特饮(500ml)":{kcal:180,per:"份",brand:"饮料",desc:"1瓶",cat:"饮料"},
+  "AD钙奶(220ml)":{kcal:150,per:"份",brand:"饮料",desc:"1瓶",cat:"饮料"}, "旺仔牛奶(245ml)":{kcal:160,per:"份",brand:"饮料",desc:"1罐",cat:"饮料"},
+  "维他柠檬茶(500ml)":{kcal:180,per:"份",brand:"饮料",desc:"1瓶",cat:"饮料"}, "美汁源果粒橙(450ml)":{kcal:200,per:"份",brand:"饮料",desc:"1瓶",cat:"饮料"},
+  "王老吉(310ml)":{kcal:140,per:"份",brand:"饮料",desc:"1罐",cat:"饮料"}, "椰树椰汁(245ml)":{kcal:170,per:"份",brand:"饮料",desc:"1罐",cat:"饮料"},
+  "银鹭花生牛奶(250ml)":{kcal:170,per:"份",brand:"饮料",desc:"1罐",cat:"饮料"}, "六个核桃(240ml)":{kcal:150,per:"份",brand:"饮料",desc:"1罐",cat:"饮料"},
+  /* ================= 扩充：其他连锁/外卖高频 ================= */
+  "黄焖鸡米饭(大份)":{kcal:800,per:"份",brand:"黄焖鸡",desc:"1份",cat:"黄焖鸡"}, "麻辣香锅(2人份)":{kcal:1200,per:"份",brand:"小吃",desc:"2人份",cat:"黄焖鸡"},
+  "冒菜(1份)":{kcal:500,per:"份",brand:"小吃",desc:"1份",cat:"小吃"}, "钵钵鸡(冷·1份)":{kcal:450,per:"份",brand:"小吃",desc:"1份",cat:"小吃"},
+  "酸菜鱼(外卖1份)":{kcal:600,per:"份",brand:"外卖",desc:"1份",cat:"外卖"}, "水煮肉片(外卖1份)":{kcal:700,per:"份",brand:"外卖",desc:"1份",cat:"外卖"},
+  "宫保鸡丁盖饭":{kcal:650,per:"份",brand:"外卖",desc:"1份",cat:"外卖"}, "鱼香肉丝盖饭":{kcal:650,per:"份",brand:"外卖",desc:"1份",cat:"外卖"},
+  "红烧肉盖饭":{kcal:800,per:"份",brand:"外卖",desc:"1份",cat:"外卖"}, "梅菜扣肉盖饭":{kcal:750,per:"份",brand:"外卖",desc:"1份",cat:"外卖"},
+  "咖喱鸡饭":{kcal:700,per:"份",brand:"外卖",desc:"1份",cat:"外卖"}, "台湾卤肉饭":{kcal:650,per:"份",brand:"外卖",desc:"1份",cat:"外卖"},
+  "海南鸡饭":{kcal:600,per:"份",brand:"外卖",desc:"1份",cat:"外卖"}, "扬州炒饭(外卖1份)":{kcal:550,per:"份",brand:"外卖",desc:"1份",cat:"外卖"},
+  "炒面(外卖1份)":{kcal:600,per:"份",brand:"外卖",desc:"1份",cat:"外卖"}, "炒河粉(外卖1份)":{kcal:650,per:"份",brand:"外卖",desc:"1份",cat:"外卖"},
+  "水饺(外卖1份·15个)":{kcal:550,per:"份",brand:"外卖",desc:"15个",cat:"外卖"}, "馄饨(外卖1份)":{kcal:400,per:"份",brand:"外卖",desc:"1份",cat:"外卖"},
+  "煲仔饭(腊味)":{kcal:700,per:"份",brand:"外卖",desc:"1份",cat:"外卖"}, "石锅拌饭(外卖1份)":{kcal:650,per:"份",brand:"外卖",desc:"1份",cat:"外卖"},
+  /* ================= 补充：凑满 500+，更多连锁/地方/外卖 ================= */
+  "西贝·莜面(1份)":{kcal:400,per:"份",brand:"西贝",desc:"1份",cat:"西贝"}, "西贝·牛大骨":{kcal:350,per:"份",brand:"西贝",desc:"1份",cat:"西贝"},
+  "西贝·羊肉串(3串)":{kcal:270,per:"份",brand:"西贝",desc:"3串",cat:"西贝"}, "外婆家·东坡肉":{kcal:450,per:"份",brand:"外婆家",desc:"1份",cat:"西贝"},
+  "外婆家·茶香鸡":{kcal:300,per:"份",brand:"外婆家",desc:"1份",cat:"外婆家"}, "绿茶餐厅·面包诱惑":{kcal:600,per:"份",brand:"绿茶",desc:"1份",cat:"外婆家"},
+  "太二酸菜鱼(1份)":{kcal:500,per:"份",brand:"太二",desc:"1份",cat:"太二"}, "九毛九·山西面(1碗)":{kcal:480,per:"份",brand:"九毛九",desc:"1碗",cat:"太二"},
+  "费大厨·辣椒炒肉":{kcal:400,per:"份",brand:"费大厨",desc:"1份",cat:"费大厨"}, "农耕记·血鸭":{kcal:350,per:"份",brand:"农耕记",desc:"1份",cat:"费大厨"},
+  "南城香·羊肉串(1串)":{kcal:90,per:"份",brand:"南城香",desc:"1串",cat:"南城香"}, "南城香·饭香(1份)":{kcal:550,per:"份",brand:"南城香",desc:"1份",cat:"南城香"},
+  "紫燕百味鸡·夫妻肺片":{kcal:250,per:"份",brand:"紫燕",desc:"1份",cat:"紫燕"}, "紫燕·藤椒鸡":{kcal:220,per:"份",brand:"紫燕",desc:"1份",cat:"紫燕"},
+  "周黑鸭·鸭脖(1份)":{kcal:200,per:"份",brand:"周黑鸭",desc:"1份",cat:"周黑鸭"}, "周黑鸭·鸭翅(1份)":{kcal:180,per:"份",brand:"周黑鸭",desc:"1份",cat:"周黑鸭"},
+  "绝味·鸭脖(1份)":{kcal:200,per:"份",brand:"绝味",desc:"1份",cat:"绝味"}, "绝味·卤藕(1份)":{kcal:120,per:"份",brand:"绝味",desc:"1份",cat:"绝味"},
+  "久久丫·鸭锁骨(1份)":{kcal:180,per:"份",brand:"久久丫",desc:"1份",cat:"久久丫"}, "廖记棒棒鸡(1份)":{kcal:250,per:"份",brand:"廖记",desc:"1份",cat:"久久丫"},
+  "杨铭宇黄焖鸡(1份)":{kcal:700,per:"份",brand:"杨铭宇",desc:"1份",cat:"杨铭宇"}, "米村拌饭·石锅拌饭":{kcal:650,per:"份",brand:"米村",desc:"1份",cat:"杨铭宇"},
+  "米村·辣白菜五花肉":{kcal:500,per:"份",brand:"米村",desc:"1份",cat:"米村"}, "汉拿山·烤肉套餐":{kcal:800,per:"份",brand:"汉拿山",desc:"1份",cat:"米村"},
+  "权金城·烤五花(1份)":{kcal:600,per:"份",brand:"权金城",desc:"1份",cat:"权金城"}, "西塔老太太·烤肉(1份)":{kcal:600,per:"份",brand:"西塔",desc:"1份",cat:"权金城"},
+  "呷哺·麻酱调料":{kcal:150,per:"份",brand:"呷哺",desc:"1碟",cat:"呷哺"}, "凑凑·锅底(1份)":{kcal:300,per:"份",brand:"凑凑",desc:"1锅",cat:"呷哺"},
+  "谭鸭血老火锅·锅底":{kcal:350,per:"份",brand:"谭鸭血",desc:"1锅",cat:"谭鸭血"}, "巴奴·毛肚(1盘)":{kcal:120,per:"份",brand:"巴奴",desc:"1盘",cat:"谭鸭血"},
+  "半天妖烤鱼(1份)":{kcal:600,per:"份",brand:"半天妖",desc:"1份",cat:"半天妖"}, "探鱼·烤鱼(1份)":{kcal:650,per:"份",brand:"探鱼",desc:"1份",cat:"半天妖"},
+  "江边城外·烤鱼(1份)":{kcal:650,per:"份",brand:"江边城外",desc:"1份",cat:"江边城外"}, "蛙来哒·牛蛙(1份)":{kcal:400,per:"份",brand:"蛙来哒",desc:"1份",cat:"江边城外"},
+  "陈鹏鹏·鹅肉(1份)":{kcal:350,per:"份",brand:"陈鹏鹏",desc:"1份",cat:"陈鹏鹏"}, "潮汕牛肉火锅(1人)":{kcal:600,per:"份",brand:"潮汕",desc:"1人份",cat:"陈鹏鹏"},
+  "萨莉亚·意面(番茄)":{kcal:450,per:"份",brand:"萨莉亚",desc:"1份",cat:"萨莉亚"}, "萨莉亚·披萨(玛格丽特)":{kcal:600,per:"份",brand:"萨莉亚",desc:"1个",cat:"萨莉亚"},
+  "萨莉亚·焗饭":{kcal:550,per:"份",brand:"萨莉亚",desc:"1份",cat:"萨莉亚"}, "萨莉亚·小食拼盘":{kcal:400,per:"份",brand:"萨莉亚",desc:"1份",cat:"萨莉亚"},
+  "牛角·烤肉套餐":{kcal:800,per:"份",brand:"牛角",desc:"1份",cat:"牛角"}, "上井·日料自助(1餐)":{kcal:1200,per:"份",brand:"上井",desc:"1餐",cat:"牛角"},
+  "N多寿司(1份)":{kcal:400,per:"份",brand:"N多寿司",desc:"1份",cat:"N多寿司"}, "争鲜寿司(1盘)":{kcal:120,per:"份",brand:"争鲜",desc:"1盘",cat:"N多寿司"},
+  "元气寿司(1盘)":{kcal:130,per:"份",brand:"元气寿司",desc:"1盘",cat:"元气寿司"}, "禄禄鲜·寿司卷":{kcal:300,per:"份",brand:"禄禄",desc:"1份",cat:"元气寿司"},
+  "gaga鲜语·三明治":{kcal:400,per:"份",brand:"gaga",desc:"1个",cat:"gaga"}, "Wagas·牛油果吐司":{kcal:380,per:"份",brand:"Wagas",desc:"1份",cat:"gaga"},
+  "Wagas·藜麦沙拉":{kcal:350,per:"份",brand:"Wagas",desc:"1份",cat:"Wagas"}, "新元素·健康碗":{kcal:400,per:"份",brand:"新元素",desc:"1份",cat:"Wagas"},
+  "超级碗·鸡胸减脂餐":{kcal:380,per:"份",brand:"轻食",desc:"1份",cat:"轻食"}, "沙拉日记·招牌沙拉":{kcal:320,per:"份",brand:"轻食",desc:"1份",cat:"轻食"},
+  "喜姐炸串(10串)":{kcal:500,per:"份",brand:"喜姐",desc:"10串",cat:"喜姐"}, "夸父炸串(10串)":{kcal:500,per:"份",brand:"夸父",desc:"10串",cat:"喜姐"},
+  "正新·大鱿鱼":{kcal:280,per:"份",brand:"正新鸡排",desc:"1份",cat:"正新鸡排"}, "正新·脆皮玉米":{kcal:200,per:"份",brand:"正新鸡排",desc:"1份",cat:"正新鸡排"},
+  "蜜雪冰城·冰淇淋圣代":{kcal:220,per:"份",brand:"蜜雪冰城",desc:"1个",cat:"蜜雪冰城"}, "茉酸奶·牛油果奶昔":{kcal:400,per:"份",brand:"茉酸奶",desc:"1杯",cat:"蜜雪冰城"},
+  "茉酸奶·原味酸奶昔":{kcal:300,per:"份",brand:"茉酸奶",desc:"1杯",cat:"茉酸奶"}, "blueglass·酸奶":{kcal:350,per:"份",brand:"blueglass",desc:"1杯",cat:"茉酸奶"},
+  "喜茶·芝芝桃桃":{kcal:340,per:"份",brand:"喜茶",desc:"1杯",cat:"喜茶"}, "奈雪·芝士草莓":{kcal:320,per:"份",brand:"奈雪",desc:"1杯",cat:"喜茶"},
+  "库迪·椰云拿铁":{kcal:200,per:"份",brand:"库迪",desc:"1杯",cat:"库迪"}, "幸运咖·美式":{kcal:10,per:"份",brand:"幸运咖",desc:"1杯",cat:"库迪"},
+  "肯悦咖啡·拿铁":{kcal:130,per:"份",brand:"肯悦",desc:"1杯",cat:"肯悦"}, "麦咖啡·风味拿铁":{kcal:180,per:"份",brand:"麦咖啡",desc:"1杯",cat:"肯悦"},
+  "麻辣烫(加荤·1碗)":{kcal:600,per:"份",brand:"小吃",desc:"1碗",cat:"小吃"}, "冒菜(加荤·1份)":{kcal:650,per:"份",brand:"小吃",desc:"1份",cat:"小吃"},
+  "干锅(1份)":{kcal:700,per:"份",brand:"外卖",desc:"1份",cat:"外卖"}, "烤肉拌饭(外卖1份)":{kcal:700,per:"份",brand:"外卖",desc:"1份",cat:"外卖"},
+  "黄焖排骨米饭":{kcal:750,per:"份",brand:"外卖",desc:"1份",cat:"外卖"}, "沙茶面(1碗)":{kcal:500,per:"份",brand:"小吃",desc:"1碗",cat:"外卖"},
+  "重庆鸡公煲(1人)":{kcal:700,per:"份",brand:"外卖",desc:"1人份",cat:"外卖"}, "啤酒鸭(外卖1份)":{kcal:600,per:"份",brand:"外卖",desc:"1份",cat:"外卖"},
+  "小炒肉盖饭":{kcal:700,per:"份",brand:"外卖",desc:"1份",cat:"外卖"}, "麻辣拌(1份)":{kcal:450,per:"份",brand:"小吃",desc:"1份",cat:"外卖"},
+  "手撕鸡拌饭":{kcal:600,per:"份",brand:"外卖",desc:"1份",cat:"外卖"}, "藤椒鸡饭":{kcal:650,per:"份",brand:"外卖",desc:"1份",cat:"外卖"},
+  "隆江猪脚饭(1份)":{kcal:800,per:"份",brand:"外卖",desc:"1份",cat:"外卖"}, "潮汕砂锅粥(1份)":{kcal:400,per:"份",brand:"外卖",desc:"1份",cat:"外卖"},
+  /* ---- 运动饮料 / 能量补给（外食榜） ---- */
+  "运动饮料·宝矿力水特(500ml)":{kcal:126,per:"份",brand:"运动饮料",desc:"1瓶",cat:"运动饮料"}, "运动饮料·佳得乐(600ml)":{kcal:130,per:"份",brand:"运动饮料",desc:"1瓶",cat:"运动饮料"}, "运动饮料·脉动(600ml)":{kcal:98,per:"份",brand:"运动饮料",desc:"1瓶",cat:"运动饮料"}, "运动饮料·外星人电解质水(500ml)":{kcal:36,per:"份",brand:"运动饮料",desc:"1瓶",cat:"运动饮料"}, "运动饮料·红牛(250ml)":{kcal:110,per:"份",brand:"运动饮料",desc:"1罐",cat:"运动饮料"}, "运动饮料·魔爪(330ml)":{kcal:120,per:"份",brand:"运动饮料",desc:"1罐",cat:"运动饮料"}, "运动饮料·能量胶(1包)":{kcal:100,per:"份",brand:"运动饮料",desc:"1包约32g",cat:"运动饮料"}
+};
+/* 运动：met 持续强度；burst=true 表示轮歇型(羽毛球/篮球)，按有效系数折算 */
+const SPORTS = {
+  "羽毛球":{met:5.5,burst:true}, "篮球":{met:6.5,burst:true}, "足球":{met:7.0,burst:true},
+  "健身(组歇)":{met:5.0,burst:true}, "力量训练":{met:5.0,burst:true},
+  "快走":{met:3.5,burst:false}, "慢跑":{met:7.0,burst:false}, "跳绳":{met:11.0,burst:false},
+  "游泳":{met:6.0,burst:false}, "骑行":{met:6.8,burst:false}, "瑜伽":{met:2.5,burst:false},
+  "爬楼":{met:8.0,burst:false}, "散步":{met:2.0,burst:false}, "平板支撑":{met:3.0,burst:false}
+};
+const BURST_FACTOR = 0.65; // 轮歇型：实际高强度时间约占 65%
+
+/* ============ 状态 ============ */
+let DATA = loadData();
+let PARAM = loadParam();
+let AI = loadAI();
+let curEdit = null;
+
+/* ============ 工具 ============ */
+function toast(m){const t=document.getElementById('toast');t.textContent=m;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),1800);}
+function todayStr(){const d=new Date();const off=d.getTimezoneOffset();const local=new Date(d.getTime()-off*60000);return local.toISOString().slice(0,10);}
+function shiftDate(d,days){const dt=new Date(d+'T00:00:00');dt.setDate(dt.getDate()+days);const off=dt.getTimezoneOffset();const local=new Date(dt.getTime()-off*60000);return local.toISOString().slice(0,10);}
+function curYear(){return new Date().getFullYear();}
+function fmt(n){return (n==null||isNaN(n))?'—':Math.round(n);}
+function fmt1(n){return (n==null||isNaN(n))?'—':Number(n).toFixed(1);}
+
+/* ============ 参数与活动系数（自动推算） ============ */
+function ageFromYear(y){ return curYear()-y; }
+/* 活动系数：只反映「日常走路/NEAT」，封顶到中度(1.55)，绝不并入专门运动。
+   原因：专门的运动消耗在 dayDeficit 里单独「加回」，若这里把步数推到 1.725（含运动），
+   会与专门运动重复计算，导致缺口虚高。所以步数系数仅代表非运动的基础活动水平。 */
+function actFromSteps(steps){
+  steps=+steps||0;
+  if(steps>=8000) return {v:1.55,txt:"日常活动较高(≥8000步)"};
+  if(steps>=5000) return {v:1.45,txt:"日常活动中等(5000-7999步)"};
+  if(steps>=3000) return {v:1.375,txt:"轻度活动(3000-4999步)"};
+  return {v:1.2,txt:"久坐(<3000步)"};
+}
+/* BMR：Mifflin + 年龄系数微调（每10岁×0.97，以30岁为基准） */
+function getBMR(weight){
+  const p=PARAM; const w=weight||PARAM.w; const age=ageFromYear(p.year);
+  let base = p.sex==='male' ? (10*w+6.25*p.h-5*age+5) : (10*w+6.25*p.h-5*age-161);
+  const adj = Math.pow(0.97, Math.max(0,(age-30)/10));
+  return base*adj;
+}
+function avgSteps(){
+  const ds=Object.keys(DATA); if(!ds.length) return 0;
+  let s=0,n=0; ds.forEach(d=>{ if(DATA[d].steps){s+=+DATA[d].steps;n++;} });
+  return n?Math.round(s/n):0;
+}
+function getAct(){ return actFromSteps(avgSteps()); }
+function getTDEE(weight){ return getBMR(weight)*getAct().v; }
+
+/* ============ BMI 计算 ============ */
+/* BMI = 体重(kg) / 身高(m)^2 ；身高取个人参数 p_h */
+function getBMI(weight){
+  const w = weight || PARAM.w;
+  const hM = (PARAM.h||0)/100;
+  if(!w || !hM) return null;
+  return w/(hM*hM);
+}
+/* WHO/中国标准分级 */
+function bmiCat(bmi){
+  if(bmi==null||isNaN(bmi)) return {txt:'—',color:'var(--muted)'};
+  if(bmi<18.5) return {txt:'偏瘦',color:'var(--blue)'};
+  if(bmi<24)   return {txt:'正常',color:'var(--green2)'};
+  if(bmi<28)   return {txt:'超重',color:'var(--amber)'};
+  return {txt:'肥胖',color:'var(--red)'};
+}
+/* 基于身高的「健康体重范围」（BMI 18.5–24 反推体重，与 Excel 表算法一致）
+   返回 {min,max} 单位 kg，保留1位小数 */
+function healthyWeightRange(){
+  const hM=(PARAM.h||0)/100; if(!hM) return null;
+  return {min:Math.round(18.5*hM*hM*10)/10, max:Math.round(24*hM*hM*10)/10};
+}
+/* 你的目标体重（取自计划书 82kg），用于在健康区间内标注；用户可在参数改 */
+function targetWeight(){ return (PARAM.goalWeight!=null)?PARAM.goalWeight:82; }
+function fmt2(n){ return (n==null||isNaN(n))?'—':Number(n).toFixed(1); }
+
+/* ============ 卡路里计算 ============ */
+/* 内置库：kcal 为每100g，按 克数/100 折算；外食榜：kcal 为「一份」热量，grams 字段表示「吃了几份」 */
+function foodInfo(name){
+  if(FOODS[name]) return {src:'FOODS', kcal:FOODS[name].kcal, per:'g'};
+  if(FASTFOOD[name]) return {src:'FASTFOOD', kcal:FASTFOOD[name].kcal, per:'份'};
+  return null;
+}
+function mealKcal(arr){
+  return (arr||[]).reduce((s,f)=>{
+    const info=foodInfo(f.name); if(!info) return s;
+    return s + (info.per==='g' ? (f.grams/100)*info.kcal : (f.grams||1)*info.kcal);
+  },0);
+}
+function sportKcal(name,min,w){
+  if(!name||!min||!w) return 0;
+  const sp=SPORTS[name]; if(!sp) return 0;
+  const factor = sp.burst ? BURST_FACTOR : 1.0;
+  return sp.met * w * (min/60) * factor;
+}
+function intakeOf(r){
+  const w=r.w||PARAM.w;
+  return mealKcal(r.meals.bf)+mealKcal(r.meals.lu)+mealKcal(r.meals.sn);
+}
+function sportOf(r){
+  const w=r.w||PARAM.w;
+  return sportKcal(r.sportName,r.sportMin,w);
+}
+/* 热量缺口计算（最终版，避免重复计算）
+   设计原则：两步来源彻底分离，互不重叠——
+     ① TDEE = BMR × 活动系数（活动系数仅反映日常走路/NEAT，封顶 1.55，见 actFromSteps）
+     ② 专门运动消耗（跑步/力量等）= 额外制造的热量缺口
+   因此统一公式： 缺口 = TDEE + 专门运动 − 摄入
+   这样：不运动那天缺口 = TDEE − 摄入；运动那天缺口自动更大，且不会把运动算两遍。
+   旧版把「步数活动系数推到 1.725」和「勾选 TDEE 含运动再 +运动」叠在一起，造成重复计算。*/
+function dayDeficit(d){
+  const r=DATA[d]; if(!r) return 0;
+  const tdee=getTDEE(r.w||PARAM.w);
+  const intake=intakeOf(r);
+  const sport=sportOf(r);
+  return Math.round(tdee + sport - intake);
+}
+
+/* ============ 渲染参数区 ============ */
+function renderParam(){
+  const act=getAct(); const age=ageFromYear(PARAM.year);
+  document.getElementById('actBadge').textContent=`${act.v} · ${act.txt}`;
+  const bmr=Math.round(getBMR());
+  const tdee=Math.round(getTDEE());
+  const bmi=getBMI(); const cat=bmiCat(bmi);
+  // BMI 徽标
+  const bb=document.getElementById('bmiBadge');
+  if(bb) bb.innerHTML = bmi==null ? '—'
+    : `<b style="color:${cat.color};font-size:15px">${fmt2(bmi)}</b> <span style="color:${cat.color}">${cat.txt}</span>`;
+  document.getElementById('paramHint').innerHTML=
+    `年龄 ${age} 岁（出生 ${PARAM.year}）· BMI≈ <b style="color:${cat.color}">${fmt2(bmi)}（${cat.txt}）</b> · 基础代谢 BMR≈ <b>${bmr}</b> kcal（含年龄系数微调）× 活动系数 <b>${act.v}</b> = 每日总消耗 TDEE≈ <b>${tdee}</b> kcal。`
+    +` 步数按近期均值 <b>${avgSteps()}</b> 步自动推定（系数封顶 1.55，仅含日常走路）。BMI = 体重 ÷ 身高(m)² ；正常区间 18.5–24。`
+    +`<br><span style="color:var(--violet2)">✓ 热量缺口算法（无重复计算）：</span>`
+    +`<b>缺口 = TDEE + 专门运动消耗 − 摄入</b>。TDEE 活动系数只含日常走路(NEAT)，运动单独加回，<b>运动越多缺口越大</b>，不会把运动算两遍。`;
+}
+
+/* ============ 渲染卡片式打卡 ============ */
+function render(){
+  renderParam();
+  // 更新日期导航标签
+  const lbl=document.getElementById('dnLabel');
+  if(lbl){
+    const vd=viewDate||todayStr();
+    const wd=['日','一','二','三','四','五','六'][new Date(vd+'T00:00:00').getDay()];
+    lbl.textContent = (vd===todayStr()?'今天 ':('周'+wd+' ')) + vd;
+  }
+  const box=document.getElementById('cards'); box.innerHTML='';
+  const dates=Object.keys(DATA).sort().reverse();
+  dates.forEach(d=>{
+    const r=DATA[d]; const w=r.w||'';
+    const bf=mealKcal(r.meals.bf), lu=mealKcal(r.meals.lu), sn=mealKcal(r.meals.sn);
+    const intake=bf+lu+sn;
+    const sport=sportKcal(r.sportName,r.sportMin,w||PARAM.w);
+    const def=dayDeficit(d);
+    const warn = (intake>getTDEE(w||PARAM.w)) || def<0;
+    const win=r.win||'';
+    const card=document.createElement('div');
+    card.className='daycard'+(warn?' warn':'')+(d===viewDate?' viewing':'');
+    card.setAttribute('data-date',d);
+    card.innerHTML=`
+      <div class="dh">
+        <input class="d" value="${d}" onchange="setDate('${d}',this.value)">
+        <button class="danger btn-sm" onclick="del('${d}')">删除</button>
+      </div>
+      <div class="grid2">
+        <div class="blk"><label>体重kg(1位小数)</label><input type="number" step="0.1" value="${w}" onchange="upd('${d}','w',this.value)"></div>
+        <div class="blk"><label>步数</label><input type="number" value="${r.steps||''}" onchange="upd('${d}','steps',this.value)"></div>
+      </div>
+      <div class="meal">
+        ${mealBlock(d,'bf','早餐',bf)}
+        ${mealBlock(d,'lu','午餐',lu)}
+        ${mealBlock(d,'sn','加餐',sn)}
+      </div>
+      <div class="sport-row">
+        <div class="blk"><label>运动项目</label>
+          <select onchange="updSport('${d}','name',this.value)">
+            <option value="">— 选运动 —</option>
+            ${Object.keys(SPORTS).map(s=>`<option value="${s}" ${r.sportName===s?'selected':''}>${s}${SPORTS[s].burst?'(轮歇)':''}</option>`).join('')}
+          </select>
+        </div>
+        <div class="blk"><label>时长(分钟)</label><input type="number" value="${r.sportMin||''}" placeholder="如60" onchange="updSport('${d}','min',this.value)"></div>
+      </div>
+      <div class="meal-note">${sportNote(r.sportName,r.sportMin)}</div>
+      <div class="defbox">
+        <div class="v" style="color:${def>=0?'var(--green)':'var(--red)'}">${def>=0?'+':''}${fmt(def)}</div>
+        <div class="l">热量缺口 kcal（摄入${fmt(intake)} · 运动${fmt(sport)}）</div>
+      </div>
+      <div style="margin-top:8px">
+        <label style="font-size:11px;color:var(--muted)">16:8 窗口守住</label>
+        <div class="win-btns">
+          <button class="win-ok ${win==='ok'?'on':''}" onclick="setWin('${d}','ok')">✓ 守住</button>
+          <button class="win-bad ${win==='bad'?'on':''}" onclick="setWin('${d}','bad')">✗ 破窗</button>
+        </div>
+      </div>`;
+    box.appendChild(card);
+  });
+  renderTodayBar();
+  renderSummary();
+}
+function mealBlock(d,meal,name,k){
+  return `<div class="meal">
+    <div class="mt"><span>${name}</span><span class="kcal">${fmt(k)} kcal</span></div>
+    <div class="mbtn"><button class="ghost btn-sm" onclick="openMeal('${d}','${meal}')">✎ 编辑/拍照</button></div>
+  </div>`;
+}
+function sportNote(name,min){
+  if(!name||!min) return '';
+  const sp=SPORTS[name];
+  if(sp&&sp.burst) return `注：${name}为轮歇运动，按有效强度 ${BURST_FACTOR*100}% 折算（实际打球约占 ${BURST_FACTOR*100}%）`;
+  return '';
+}
+
+/* ============ 今日快捷卡（热量缺口仪表盘） ============ */
+function renderTodayBar(){
+  const d=todayStr(); ensure(d);
+  const r=DATA[d];
+  const w=r.w||PARAM.w;
+  const tdee=getTDEE(w);
+  const intake=mealKcal(r.meals.bf)+mealKcal(r.meals.lu)+mealKcal(r.meals.sn);
+  const sport=sportKcal(r.sportName,r.sportMin,w);
+  const bmr=Math.round(getBMR(w));
+  const def=dayDeficit(d); // 统一用修复后的缺口公式
+  const goal=PARAM.goal||500;
+  const pct=Math.max(0,Math.min(100,Math.round(def/goal*100)));
+  const over=def>goal;
+  const ringColor = def>=0 ? (over?'#6aa8ff':'#4fe6c2') : '#ff7a85';
+  const bar=document.getElementById('todayBar');
+  bar.innerHTML=`
+    <div class="ring-wrap">
+      <svg width="120" height="120" viewBox="0 0 120 120">
+        <circle cx="60" cy="60" r="50" fill="none" stroke="#20303a" stroke-width="12"/>
+        <circle cx="60" cy="60" r="50" fill="none" stroke="${ringColor}" stroke-width="12"
+          stroke-linecap="round" stroke-dasharray="${2*Math.PI*50}"
+          stroke-dashoffset="${2*Math.PI*50*(1-pct/100)}"
+          transform="rotate(-90 60 60)" style="transition:stroke-dashoffset .5s ease"/>
+      </svg>
+      <div class="ring-center">
+        <div class="num" style="color:${ringColor}">${def>=0?'+':''}${fmt(def)}</div>
+        <div class="lab">缺口 kcal</div>
+      </div>
+    </div>
+    <div class="today-info">
+      <div class="ti-title">🔥 今天制造的热量缺口（目标 ${goal} kcal/天 · ${pct}%${over?' · 已超标🎉':''}）</div>
+      <div class="meter">
+        <div class="ml"><span>🔥 总消耗 TDEE</span><b>${fmt(tdee)} kcal</b></div>
+        <div class="bar"><div class="fill f-burn" style="width:100%"></div></div>
+      </div>
+      <div class="meter">
+        <div class="ml"><span>🍽 饮食摄入</span><b>${fmt(intake)} kcal</b></div>
+        <div class="bar"><div class="fill f-intake" style="width:${Math.min(100,intake/tdee*100)}%"></div></div>
+      </div>
+      <div class="meter">
+        <div class="ml"><span>🏃 运动消耗</span><b>${fmt(sport)} kcal</b></div>
+        <div class="bar"><div class="fill f-sport" style="width:${Math.min(100,sport/tdee*100)}%"></div></div>
+      </div>
+      <div class="ml" style="margin-top:6px;font-size:11.5px">
+        <span>基础代谢 BMR≈<b>${bmr}</b> · 体重 <b>${r.w?fmt1(r.w):'—'}</b>kg · 步数 <b>${r.steps||'—'}</b></span>
+        <button class="ghost btn-sm" onclick="scrollToday()">去填今日 ↓</button>
+      </div>
+    </div>`;
+}
+function scrollToday(){ const d=todayStr(); const el=document.querySelector(`input.d[value="${d}"]`); if(el) el.scrollIntoView({behavior:'smooth',block:'center'}); }
+
+/* ============ 操作 ============ */
+let viewDate = todayStr(); // 当前正在查看的日期
+function ensure(d){ if(!DATA[d]) DATA[d]={meals:{bf:[],lu:[],sn:[]},steps:'',sportName:'',sportMin:'',win:''}; return DATA[d]; }
+/* 日期导航：前一天 / 后一天 / 回到今天 */
+function navDate(delta){
+  // 以当前 viewDate 为基准偏移；若当前 viewDate 不存在于 DATA，则跳到最近邻的一天
+  let target = shiftDate(viewDate, delta);
+  if(!DATA[target]){
+    const all = Object.keys(DATA).sort();
+    if(!all.length){ target = shiftDate(todayStr(), delta); }
+    else if(delta<0){ // 前一天：找比 target 小的最大日期，否则最小的
+      const prev = all.filter(d=>d<target);
+      target = prev.length? prev[prev.length-1] : all[0];
+    } else { // 后一天：找比 target 大的最小日期，否则最大的
+      const next = all.filter(d=>d>target);
+      target = next.length? next[0] : all[all.length-1];
+    }
+  }
+  viewDate = target;
+  render();
+  const el=document.querySelector('input.d[value="'+target+'"]');
+  if(el) el.closest('.daycard').scrollIntoView({behavior:'smooth',block:'center'});
+}
+function goToday(){ viewDate=todayStr(); ensure(viewDate); save(); render(); const el=document.querySelector('input.d[value="'+viewDate+'"]'); if(el) el.closest('.daycard').scrollIntoView({behavior:'smooth',block:'center'}); }
+function addToday(){ const d=todayStr(); ensure(d); save(); render(); toast('已添加 '+d); }
+function addDatePrompt(){ const d=prompt('输入日期(YYYY-MM-DD)：',todayStr()); if(d){ ensure(d); save(); render(); toast('已添加 '+d);} }
+function setDate(old,nu){ if(old===nu) return; nu=(nu||'').trim(); if(!nu){toast('日期不能为空');return;} if(DATA[nu]){toast('该日期已存在，请用「添加指定日期」');return;} if(!confirm('确认把 '+old+' 的打卡数据改到 '+nu+' 吗？\n（此操作会移动该日全部数据）')){ render(); return; } DATA[nu]=DATA[old]; delete DATA[old]; viewDate=nu; save(); render(); }
+function upd(d,k,v){ ensure(d); if(k==='w') DATA[d][k]=v===''?'':Math.round(+v*10)/10; else if(k==='steps') DATA[d][k]=v===''?'':+v; else DATA[d][k]=v; save(); render(); }
+function updSport(d,k,v){ ensure(d); DATA[d][k==='name'?'sportName':'sportMin'] = v===''?'':(k==='min'?+v:v); save(); render(); }
+function setWin(d,v){ ensure(d); DATA[d].win = DATA[d].win===v ? '' : v; save(); render(); }
+function del(d){ delete DATA[d]; save(); render(); }
+function manualAdd(){
+  if(!curEdit){ toast('请先点某餐的「编辑/拍照」'); return; }
+  const pick=window.prompt('手写添加食物：\n'
+    +'· 内置食物：食物名 克数（如「红烧肉 80」）\n'
+    +'· 外食榜：食物名 份数（如「麦当劳·薯条(大) 1」）','');
+  if(!pick) return;
+  const m=pick.trim().match(/^(.+?)\s*(\d+)\s*(份|g|克)?$/);
+  if(!m){ toast('格式不对，示例：红烧肉 80 或 麦当劳·薯条(大) 1'); return; }
+  const name=m[1].trim(), qty=+m[2];
+  const hit=findFood(name) || name;
+  addFood(hit, qty);
+  toast('已添加 '+hit+(foodInfo(hit)?.per==='g'?(' '+qty+'g'):(' '+qty+'份')));
+}
+/* addFood：内置库默认单位克数；外食榜默认 1 份（可改份数/克数） */
+function addFood(name, qty){
+  if(!curEdit) return;
+  const d=ensure(curEdit.date);
+  let grams;
+  if(FOODS[name]) grams = (qty!=null)? qty : FOODS[name].unit;
+  else grams = (qty!=null)? qty : 1; // 外食榜：份数
+  d.meals[curEdit.meal].push({name, grams});
+  save(); renderMealTags(); render();
+  const info=foodInfo(name);
+  toast('已加 '+name+(info?.per==='g'?(' '+grams+'g'):(' '+grams+'份')));
+}
+function changeGrams(idx,g){ if(!curEdit) return; DATA[curEdit.date].meals[curEdit.meal][idx].grams=+g||0; save(); renderMealTags(); render(); }
+function removeFood(idx){
+  if(!curEdit) return;
+  DATA[curEdit.date].meals[curEdit.meal].splice(idx,1);
+  save(); renderMealTags(); render();
+}
+function renderMealTags(){
+  const box=document.getElementById('mealTags'); box.innerHTML='';
+  if(!curEdit) return;
+  const arr=DATA[curEdit.date].meals[curEdit.meal];
+  if(!arr.length){ box.innerHTML='<div class="hint">还没加食物，点上方食物库或拍照添加</div>'; return; }
+  arr.forEach((f,i)=>{
+    const info=foodInfo(f.name);
+    const k=Math.round(info?(info.per==='g'?(f.grams/100)*info.kcal:(f.grams||1)*info.kcal):0);
+    const unit = info?.per==='g' ? 'g' : '份';
+    const el=document.createElement('div'); el.className='tag';
+    el.innerHTML=`${f.name} <input type="number" value="${f.grams}" onchange="changeGrams(${i},this.value)">${unit} <b>${k}kcal</b> <span class="x" onclick="removeFood(${i})">✕</span>`;
+    box.appendChild(el);
+  });
+  const note=document.createElement('div'); note.className='meal-note';
+  note.textContent='提示：'+arr.map(f=>{
+    const info=foodInfo(f.name);
+    if(!info) return f.name+' (未知)';
+    return info.per==='g' ? (f.name+' 1份≈'+FOODS[f.name].unit+'g('+FOODS[f.name].desc+')')
+                           : (f.name+' '+FASTFOOD[f.name].kcal+'kcal/份 ('+FASTFOOD[f.name].desc+')');
+  }).join('；');
+  box.appendChild(note);
+}
+
+/* ============ 拼音 / 首字母 / 缩写 模糊搜索 ============ */
+const HZPY = "一yi丁ding万wan三san上shang东dong丝si两liang个ge丫ya中zhong串chuan丸wan丼ding丽li久jiu乌wu乐le九jiu乡xiang书shu乳ru争zheng事shi二er云yun五wu井jing亚ya亦yi京jing亮liang亲qin人ren仁ren仔zi他ta仙xian代dai份fen优you伯bo低di佛fo便bian保bao健jian康kang傅fu儿er元yuan先xian克ke全quan八ba公gong六liu兰lan关guan其qi养yang内nei冒mao农nong冬dong冰bing冷leng冻dong准zhun凉liang减jian凑cou凯kai刀dao分fen切qie利li刺ci剁duo削xiao力li功gong加jia动dong助zhu劲jin劳lao包bao化hua北bei千qian午wu半ban华hua单dan卖mai南nan卜bu卡ka卤lu卷juan厅ting厘li厚hou原yuan厨chu去qu县xian参can叉cha双shuang发fa口kou古gu只zhi可ke台tai叶ye司si吃chi合he吉ji吐tu吞tun吮shun吸xi周zhou味wei呷xia和he咕gu咖ka咸xian咾lao品pin哈ha哒da哥ge哺bu售shou啡fei啤pi喜xi喱li嘴zui四si回hui团tuan围wei国guo圆yuan圈quan土tu圣sheng地di坎kan块kuai坚jian坡po城cheng培pei基ji堂tang堡bao塔ta墙qiang增zeng墨mo士shi夏xia外wai多duo大da天tian太tai夫fu头tou夷yi夸kua夹jia奇qi奈nai套tao奥ao女nv奴nu奶nai好hao妇fu妍yan妖yao妻qi姐jie姜jiang姨yi姬ji威wei娃wa婆po嫩nen子zi季ji宇yu安an宝bao客ke宫gong家jia宽kuan密mi寸cun对dui寿shou尊zun小xiao尔er尼ni尿niao层ceng山shan州zhou巧qiao巨ju巴ba市shi布bu师shi希xi帕pa带dai干gan平ping年nian幸xing庆qing库ku底di店dian府fu度du康kang廖liao开kai式shi张zhang弦xian当dang彩cai德de心xin必bi忌ji悦yue惑huo意yi慕mu戟ji扁bian扇shan手shou打da扣kou扬yang把ba抓zhua披pi抹mo拉la拌ban拍pai招zhao拼pin拿na指zhi挞ta捞lao排pai探tan提ti握wo摇yao摩mo撒sa撕si文wen料liao斯si新xin方fang旋xuan无wu日ri旦dan早zao时shi旺wang明ming昔xi星xing春chun暖nuan暴bao曲qu月yue有you木mu朵duo机ji杂za权quan李li杏xing村cun条tiao来lai杨yang杯bei杷pa松song板ban枇pi林lin果guo枝zhi枪qiang枫feng柚you柠ning柳liu柿shi标biao树shu校xiao核he根gen格ge桂gui桃tao桑sang桥qiao桶tong梅mei梨li棉mian棍gun棒bang森sen椒jiao椰ye楂zha榄lan榛zhen榴liu樱ying橄gan橙cheng檬meng欧ou正zheng武wu母mu毛mao气qi水shui永yong汀ting汁zhi汉han汕shan江jiang汤tang沙sha沪hu河he油you治zhi泉quan法fa泡pao波bo泸lu洋yang派pai浆jiang海hai淇qi淋lin淡dan深shen混hun清qing湾wan溏tang源yuan溪xi滑hua滚gun满man潮chao灌guan火huo灼zhuo炒chao炖dun炸zha点dian炼lian烙lao烤kao烧shao烩hui烫tang热re焖men焗ju焦jiao煎jian照zhao煮zhu煲bao煸bian熟shu燕yan爆bao爪zhao父fu片pian牌pai牙ya牛niu特te狗gou猕mi猪zhu猴hou玉yu王wang玛ma玫mei珍zhen珠zhu班ban球qiu琪qi琵pi琶pa瑞rui瑰gui瓜gua甘gan甜tian生sheng用yong田tian甲jia留liu番fan疙ge瘦shou瘩da白bai百bai皇huang皮pi盐yan盔kui盖gai盘pan真zhen石shi砂sha碎sui碗wan碧bi禄lu福fu秋qiu空kong窝wo章zhang竹zhu笋sun笼long筋jin筒tong米mi粉fen粑ba粒li粢zi粥zhou粮liang粽zong精jing糕gao糖tang糙cao糯nuo素su紫zi红hong约yue级ji线xian绒rong结jie绝jue维wei绿lv罐guan罗luo羊yang美mei羹geng翅chi翰han老lao耕geng耳er肉rou肚du肝gan肠chang肥fei肯ken肺fei胗zhen胜sheng胡hu胸xiong脂zhi脆cui脉mai脊ji脑nao脖bo脚jiao脯fu脱tuo腊la腐fu腩nan腰yao腱jian腿tui自zi臭chou至zhi舌she良liang芋yu芒mang芙fu芝zhi芦lu芬fen花hua芹qin芽ya苏su苔tai苗miao苦ku苹ping茄qie茉mo茗ming茶cha茼tong草cao荔li荞qiao荤hun药yao荷he莉li莓mei莜you莱lai莲lian莴wo菇gu菌jun菜cai菠bo菲fei萃cui萄tao萝luo萨sa葚shen葡pu葫hu葱cong葵kui蒜suan蒸zheng蒿hao蓉rong蓝lan蔓man蔗zhe蔬shu蕉jiao薯shu藏cang藕ou藜li藤teng蘑mo虾xia蚕can蚝hao蛋dan蛙wa蛤ge蛳si蜂feng蜊li蜜mi蝎xie螺luo蟹xie血xue西xi见jian角jiao詹zhan记ji许xu语yu诱you诺nuo调tiao谭tan豆dou豌wan豚tun贝bei质zhi贴tie费fei赛sai超chao越yue跳tiao蹄ti车che身shen轻qing辣la边bian达da过guo运yun迪di遇yu道dao部bu配pei酒jiu酥su酪lao酯zhi酱jiang酷ku酸suan酿niang醇chun醋cu里li重zhong野ye金jin针zhen钙gai钵bo铁tie铭ming银yin铺pu锁suo锅guo长chang队dui阳yang阿a陈chen陨yun隆long雪xue零ling露lu霸ba青qing面mian韩han韭jiu须xu颂song风feng食shi餐can饨tun饭fan饮yin饯jian饺jiao饼bing馄hun馆guan馍mo馒man馕nang香xiang马ma驴lv骨gu高gao魔mo鱼yu鱿you鲈lu鲍bao鲜xian鲫ji鳕xue鳗man鸡ji鸭ya鹅e鹌an鹏peng鹑chun鹭lu鹰ying麒qi麟lin麦mai麻ma黄huang黎li黑hei龙long";
+/* 解析 "汉字+全拼" 紧凑串 -> 汉字->全拼 字典 */
+const PYMAP = (function(){
+  const m={}; let i=0; const s=HZPY;
+  while(i<s.length){
+    const ch=s[i]; i++; let py='';
+    while(i<s.length && /[a-z]/.test(s[i])){ py+=s[i]; i++; }
+    if(py) m[ch]=py;
+  }
+  return m;
+})();
+/* 中文名 -> {full:全拼, init:首字母串} */
+function toPinyin(s){
+  let full='', init='';
+  for(const c of (s||'')){
+    const p=PYMAP[c];
+    if(p){ full+=p; init+=p[0]; }
+    // 非汉字（字母/数字/·）原样保留到 full 以便英文缩写匹配
+    else if(/[a-z0-9]/i.test(c)){ full+=c.toLowerCase(); }
+  }
+  return {full:full.toLowerCase(), init};
+}
+/* 品牌英文/拼音缩写别名（外食榜常用英文缩写） */
+const BRAND_ALIAS = {
+  "麦当劳":["mdl","mc"], "肯德基":["kfc","kdj"], "汉堡王":["hbw","bkw"],
+  "必胜客":["bsk","pzh"], "赛百味":["sbw","sub"], "星巴克":["stb","sbk"],
+  "瑞幸":["rx","luckin"], "喜茶":["xc"], "奈雪":["nx"], "海底捞":["hdl"],
+  "蜜雪冰城":["mxc"], "正新鸡排":["zxc"], "华莱士":["hls"], "德克士":["dks"],
+  "达美乐":["dml"], "棒约翰":["bjy"], "真功夫":["zgk"], "永和豆浆":["yh"],
+  "沙县小吃":["sx"], "兰州拉面":["lz"]
+};
+const _PINYIN_CACHE = {};
+function getPy(name){
+  if(_PINYIN_CACHE[name]) return _PINYIN_CACHE[name];
+  const base = toPinyin(name);
+  let brandInit='', brandAlias=[];
+  const bar=name.indexOf('·');
+  if(bar>0){
+    const brand=name.slice(0,bar);
+    brandInit=toPinyin(brand).init;
+    if(BRAND_ALIAS[brand]) brandAlias=BRAND_ALIAS[brand];
+  }
+  const o={full:base.full, init:base.init, brandInit, brandAlias};
+  _PINYIN_CACHE[name]=o; return o;
+}
+/* 模糊匹配：中文子串 / 全拼 / 首字母 / 品牌缩写 / 品牌中文 */
+function fuzzyMatch(name, kw){
+  if(!kw) return true;
+  kw=kw.toLowerCase().trim();
+  if(!kw) return true;
+  if(name.toLowerCase().includes(kw)) return true;      // 中文/英文直接包含
+  const p=getPy(name);
+  if(p.full.includes(kw)) return true;                  // 全拼：jidan -> 鸡蛋
+  if(p.init.includes(kw)) return true;                  // 首字母：jd -> 鸡蛋
+  if(p.brandInit && p.brandInit.includes(kw)) return true;   // 品牌首字母：mdl -> 麦当劳
+  if(p.brandAlias && p.brandAlias.some(a=>a.includes(kw))) return true; // 英文缩写：kfc
+  return false;
+}
+
+/* ============ 食物库面板（内置 / 外食榜 双库） ============ */
+let foodTab='all'; // all | builtin | fastfood
+function setFoodTab(tab){
+  foodTab=tab;
+  ['all','builtin','fastfood'].forEach(t=>{
+    const b=document.getElementById('ft_'+t); if(b) b.classList.toggle('on', t===tab);
+  });
+  const kw=document.getElementById('foodSearch')?.value||'';
+  renderFoodPick(kw);
+}
+function renderFoodPick(filter, tab){
+  if(tab) foodTab=tab;
+  const box=document.getElementById('foodPick'); box.innerHTML='';
+  const kw=(filter||'').trim();
+  if(!kw){
+    box.innerHTML='<div class="hint" style="text-align:center;padding:16px">👆 在上方搜索框输入食物名即可查看，支持拼音首字母（如 jd=鸡蛋，mdl=麦当劳）</div>';
+    return;
+  }
+  const match=(n)=> fuzzyMatch(n, kw);
+  const showBuiltin = (foodTab==='all'||foodTab==='builtin');
+  const showFast = (foodTab==='all'||foodTab==='fastfood');
+  if(showBuiltin){
+    appendCatGroup(box, FOODS, match, '内置库');
+  }
+  if(showFast){
+    appendCatGroup(box, FASTFOOD, match, '外食榜');
+  }
+  if(!box.children.length) box.innerHTML='<div class="hint">没找到「'+kw+'」，可直接手写添加</div>';
+}
+/* 按 cat 字段分组渲染食物库 */
+function appendCatGroup(box, src, match, kind){
+  // 收集匹配项，按 cat 分组（保持出现顺序）
+  const groups={}; const order=[];
+  for(const name of Object.keys(src)){
+    if(!match(name)) continue;
+    const f=src[name]; const cat=f.cat||'其他';
+    if(!groups[cat]){ groups[cat]=[]; order.push(cat); }
+    groups[cat].push(name);
+  }
+  for(const cat of order){
+    const h=document.createElement('div'); h.className='cat-h'; h.textContent=cat;
+    box.appendChild(h);
+    for(const name of groups[cat]){
+      const f=src[name]; const el=document.createElement('div'); el.className='fi'+(kind==='外食榜'?' brand':'');
+      if(kind==='外食榜'){
+        el.innerHTML=`${name.replace(f.brand+'·','')} <b>${f.kcal}kcal/份</b><span>${f.brand} · ${f.desc}</span>`;
+        el.onclick=()=>{ if(!curEdit){toast('请先点某餐的「编辑/拍照」');return;} addFood(name); };
+      }else{
+        el.innerHTML=`${name} <b>${f.kcal}/100g</b><span>1份≈${f.unit}g</span>`;
+        el.onclick=()=>{ if(!curEdit){toast('请先点某餐的「编辑/拍照」');return;} addFood(name); };
+      }
+      box.appendChild(el);
+    }
+  }
+}
+function renderMealFoodPick(filter){
+  const box=document.getElementById('mealFoodPick'); box.innerHTML='';
+  const kw=(filter||'').trim();
+  if(!kw){ return; } // 没输入关键词时不展示任何食物，避免列表太长
+  const match=(n)=> fuzzyMatch(n, kw);
+  appendCatGroup(box, FOODS, match, '内置库');
+  appendCatGroup(box, FASTFOOD, match, '外食榜');
+  if(!box.children.length) box.innerHTML='<div class="hint">没找到「'+kw+'」，可直接手写添加（见下方）</div>';
+}
+
+/* ============ 弹窗 ============ */
+function openMeal(d,meal){
+  curEdit={date:d,meal};
+  const names={bf:'早餐',lu:'午餐',sn:'加餐'};
+  document.getElementById('mealModalTitle').textContent=`编辑 ${d} · ${names[meal]}`;
+  document.getElementById('aiBox').classList.remove('open');
+  document.getElementById('aiFallback').style.display='none';
+  document.getElementById('photoPrev').style.display='none';
+  document.getElementById('aiStatus').textContent='';
+  const ms=document.getElementById('mealFoodSearch'); if(ms) ms.value='';
+  renderMealTags(); renderMealFoodPick();
+  document.getElementById('mealModal').classList.add('open');
+}
+function closeMeal(){ save(); document.getElementById('mealModal').classList.remove('open'); curEdit=null; }
+/* 按 ESC 关闭弹窗 */
+document.addEventListener('keydown',e=>{ if(e.key==='Escape'){ const m=document.getElementById('mealModal'); if(m.classList.contains('open')) closeMeal(); } });
+function openPhoto(){
+  document.getElementById('aiBox').classList.add('open');
+  // file:// 协议下 fetch 会被 CORS 阻止，提前提示
+  if(location.protocol==='file:'){
+    const s=document.getElementById('aiStatus');
+    s.innerHTML='<span style="color:#ffaa40">你是直接双击 HTML 打开的，AI 拍照识别不可用（浏览器安全限制）。</span><br>'
+      +'请改用 <b>「减脂打卡.bat」</b> 启动器打开即可使用。<br>'
+      +'或直接在下方勾选这餐吃了什么 ↓';
+    showFallback(); return;
+  }
+  // 没填 Key 时直接展示兜底勾选区，避免用户以为坏了
+  if(!AI.key){ const s=document.getElementById('aiStatus'); s.innerHTML='<span style="color:var(--red)">尚未配置 DashScope API Key，无法 AI 识别。</span>先在③填 Key，或下方直接勾选这餐吃了什么 ↓'; showFallback(); }
+}
+
+/* ============ AI 拍照识别（通义千问视觉 DashScope） ============ */
+/* 食物名清单（内置 + 外食榜），传给AI让它尽量贴近返回，提升匹配率 */
+function foodsListText(){ return Object.keys(FOODS).concat(Object.keys(FASTFOOD)).join('、'); }
+/* 无 Key 兜底：展示常见菜品 + 外食榜供勾选（看到照片凭记忆勾即可） */
+function showFallback(){
+  const box=document.getElementById('aiFallback'); box.style.display='block';
+  const pick=document.getElementById('aiFallbackPick'); pick.innerHTML='';
+  const common=["米饭(熟)","红烧肉","糖醋里脊","宫保鸡丁","麻婆豆腐","番茄炒蛋","青椒肉丝","炒青菜","白切鸡","红烧茄子","饺子","包子","美式咖啡","拿铁","可乐","奶茶",
+    "麦当劳·麦辣鸡腿堡","麦当劳·薯条(大)","肯德基·香辣鸡腿堡","正新鸡排·香辣鸡排(1份)","兰州拉面·牛肉面(1碗)","黄焖鸡米饭(1份)"];
+  common.forEach(n=>{
+    const el=document.createElement('div'); el.className='fi';
+    const info=foodInfo(n);
+    const isFast = info?.per==='份';
+    el.innerHTML=n+' <b>'+(isFast?info.kcal+'kcal/份':info.kcal+'/100g')+'</b><span>'+(isFast?FASTFOOD[n].desc:('1份≈'+FOODS[n].unit+'g'))+'</span>';
+    el.onclick=()=>{ if(!curEdit)return; addFood(n); };
+    pick.appendChild(el);
+  });
+}
+function onPhoto(input){
+  const file=input.files[0]; if(!file) return;
+  const status=document.getElementById('aiStatus');
+  const reader=new FileReader();
+  reader.onload=()=>{
+    document.getElementById('photoPrev').src=reader.result;
+    document.getElementById('photoPrev').style.display='block';
+    if(!AI.key){
+      status.innerHTML='<span style="color:var(--red)">尚未配置 DashScope API Key，无法 AI 识别。</span>'
+        +'可先在③填 Key，或下方直接勾选这餐吃了什么 ↓';
+      showFallback(); return;
+    }
+    const base64=reader.result.split(',')[1];
+    status.textContent='识别中…（约5-20秒，请稍候）';
+    const body={
+      model:AI.model,
+      messages:[{role:"user",content:[
+        {type:"text",text:
+          "你是专业的食物热量估算营养师。请仔细看图片，逐项识别其中的食物，并【务必】估算每项的重量克数。\n"
+          +"估算克数的方法（很重要，必须执行，不能省略 grams）：\n"
+          +"1) 用图片中的参照物判断大小：普通餐盘直径约24cm、碗口径约11cm、筷子长约24cm、易拉罐高约12cm、成人手掌约18cm；\n"
+          +"2) 根据食物占盘/占碗的比例和堆叠厚度推算体积，再换算成克数；\n"
+          +"3) 用常识份量兜底：1碗米饭≈150g，1个鸡蛋≈50g，1块巴掌大的肉≈100-120g，1杯饮料≈250-330g，1个包子≈80g，炒菜1盘≈120-150g；\n"
+          +"4) 即使不确定也必须给出一个最合理的整数克数，绝对不要返回 0、null 或省略 grams 字段。\n"
+          +"食物名请尽量匹配以下已有名称中最接近的一个（不要生造新名，外食/连锁品牌请用「品牌·菜名」格式）：\n"+foodsListText()+"。\n"
+          +"输出：只返回一个 JSON 数组，每个元素形如 {\"name\":\"中文食物名\",\"grams\":整数克数,\"portion\":\"份量描述(如1碗/1个/半盘)\"}。"
+          +"不要输出任何解释文字、不要用代码块标记(```），只要纯 JSON 数组。"},
+        {type:"image_url",image_url:{url:"data:image/jpeg;base64,"+base64}}
+      ]}]
+    };
+    let done=false;
+    const timer=setTimeout(()=>{ if(!done){ status.textContent='识别超时（>60秒）。可能网络慢，或 Key 无权限，可重试 / 用下方勾选兜底。'; showFallback(); } },60000);
+    fetch(AI.base+"/chat/completions",{
+      method:"POST",
+      headers:{"Content-Type":"application/json","Authorization":"Bearer "+AI.key},
+      body:JSON.stringify(body)
+    }).then(r=>{
+      if(!r.ok){ done=true; clearTimeout(timer);
+        let msg='HTTP '+r.status;
+        if(r.status===401) msg='401 密钥无效或未授权（请检查 DashScope Key 是否正确、视觉模型是否已开通）';
+        else if(r.status===404) msg='404 模型名不存在（检查③模型选择）';
+        else if(r.status===429) msg='429 请求太频繁或额度不足';
+        status.innerHTML='<span style="color:var(--red)">识别失败：'+msg+'</span> 可改用下方勾选 ↓';
+        showFallback(); return null;
+      }
+      return r.json();
+    }).then(j=>{
+      if(!j) return;
+      done=true; clearTimeout(timer);
+      let txt=j.choices?.[0]?.message?.content||'';
+      txt=txt.replace(/```json|```/g,'').trim();
+      let list=[]; try{list=JSON.parse(txt);}catch(e){
+        status.innerHTML='<span style="color:var(--red)">识别结果解析失败：</span>'+(txt.slice(0,60)||JSON.stringify(j).slice(0,80))+' 可改用下方勾选 ↓';
+        showFallback(); return;
+      }
+      matchFoods(list,status);
+    }).catch(e=>{ done=true; clearTimeout(timer);
+      status.innerHTML='<span style="color:var(--red)">请求失败：'+e.message+'</span> 可改用下方勾选 ↓';
+      showFallback();
+    });
+  };
+  reader.readAsDataURL(file);
+}
+/* 匹配：命中的直接加；未命中的列出候选供手动点选添加 */
+function matchFoods(list,status){
+  if(!curEdit) return;
+  let added=0; const missed=[]; const addedInfo=[];
+  list.forEach(it=>{
+    const name=(it.name||'').trim();
+    const hit=findFood(name);
+    // 克数兜底：AI 给了有效克数就用；否则按食物库默认份量（内置=unit克，外食=1份）
+    const aiG=Math.round(+it.grams);
+    let grams;
+    if(hit && FOODS[hit]){ grams = (aiG>0)? aiG : FOODS[hit].unit; } // 内置库按克，缺失用默认份量
+    else if(hit && FASTFOOD[hit]){ grams = 1; } // 外食榜按「份」，默认1份
+    else { grams = (aiG>0)? aiG : 100; }
+    if(hit){
+      DATA[curEdit.date].meals[curEdit.meal].push({name:hit,grams});
+      added++;
+      const unit=FOODS[hit]?'g':'份';
+      addedInfo.push(`${hit} ${grams}${unit}${it.portion?'（'+it.portion+'）':''}`);
+    }
+    else missed.push({name,grams:(aiG>0?aiG:100),portion:it.portion||''});
+  });
+  save(); renderMealTags(); render();
+  if(!missed.length){
+    status.innerHTML='✓ 已识别并添加 '+added+' 项：<br><span style="color:var(--muted)">'+addedInfo.join('；')+'</span><br>如克数不准，可在下方「已添加」处直接修改。';
+    return;
+  }
+  // 未识别项：列出候选库名让用户点选
+  status.innerHTML='已添加 '+added+' 项；以下 AI 识别到但库内无精确匹配，点选最接近的食物名添加：';
+  const pick=document.createElement('div'); pick.className='food-pick';
+  missed.forEach(m=>{
+    const el=document.createElement('div'); el.className='fi';
+    el.innerHTML='「'+m.name+'」≈'+m.grams+'g → 选：';
+    Object.keys(FOODS).slice(0,8).forEach(fk=>{
+      const b=document.createElement('span'); b.textContent=fk; b.style.cssText='display:inline-block;margin:2px;padding:2px 6px;border:1px solid #cfe6d8;border-radius:6px;cursor:pointer;font-size:11px';
+      b.onclick=()=>{ if(!curEdit)return; DATA[curEdit.date].meals[curEdit.meal].push({name:fk,grams:m.grams}); save(); renderMealTags(); render(); el.remove(); toast('已加 '+fk); };
+      el.appendChild(b);
+    });
+    pick.appendChild(el);
+  });
+  status.appendChild(pick);
+}
+function findFood(name){
+  if(FOODS[name]) return name;
+  if(FASTFOOD[name]) return name;
+  for(const k of Object.keys(FOODS)){ if(name.includes(k)||k.includes(name)) return k; }
+  for(const k of Object.keys(FASTFOOD)){ if(name.includes(k)||k.includes(name)) return k; }
+  return null;
+}
+
+/* ============ 汇总 ============ */
+function renderSummary(){
+  const dates=Object.keys(DATA).sort();
+  const box=document.getElementById('summary');
+  const lastD=dates[dates.length-1];
+  const firstW=DATA[dates[0]]?.w, lastW=DATA[lastD]?.w;
+  const tdee=Math.round(getTDEE());
+  let totalIntake=0,totalSport=0,n=0,defSum=0;
+  dates.forEach(d=>{
+    const r=DATA[d];
+    const intake=intakeOf(r);
+    const sport=sportOf(r);
+    const def=dayDeficit(d);
+    totalIntake+=intake; totalSport+=sport; defSum+=def; n++;
+  });
+  const avgDef=n?defSum/n:0;
+  box.innerHTML=`
+    <div class="stat"><div class="v">${fmt1(PARAM.w)}</div><div class="l">当前体重(参数)kg</div></div>
+    <div class="stat"><div class="v">${firstW&&lastW?fmt((firstW-lastW).toFixed(1)):'—'}</div><div class="l">累计变化 kg</div></div>
+    <div class="stat"><div class="v">${tdee}</div><div class="l">每日总消耗 TDEE kcal</div></div>
+    <div class="stat"><div class="v">${fmt(totalIntake/n||0)}</div><div class="l">日均摄入 kcal</div></div>
+    <div class="stat"><div class="v">${fmt(totalSport/n||0)}</div><div class="l">日均运动消耗 kcal</div></div>
+    <div class="stat"><div class="v" style="color:${avgDef>=0?'var(--green)':'var(--red)'}">${avgDef>=0?'+':''}${fmt(avgDef)}</div><div class="l">日均热量缺口 kcal</div></div>`;
+  drawChart(dates);
+  renderBmiBoard(dates);
+}
+
+/* ============ BMI 独立汇总看板 ============ */
+function renderBmiBoard(){
+  const dates=Object.keys(DATA).sort();
+  const box=document.getElementById('bmiBoard'); if(!box) return;
+  // 有体重记录的日期
+  const rec=dates.filter(d=>DATA[d].w);
+  const curBmi=getBMI(PARAM.w); const cCat=bmiCat(curBmi);
+  const firstBmi=getBMI(rec.length?DATA[rec[0]].w:null);
+  const lastBmi=getBMI(rec.length?DATA[rec[rec.length-1]].w:null);
+  const bmiDelta=(firstBmi!=null&&lastBmi!=null)?(lastBmi-firstBmi):null;
+  // 健康体重范围（BMI 18.5–24 反推，与 Excel 表算法一致）
+  const hw=healthyWeightRange();
+  const gw=targetWeight();
+  const gwInRange = hw && gw>=hw.min && gw<=hw.max;
+  const toGo = (PARAM.w - gw); // 当前还需减多少到目标
+  const rangeHtml = hw ? `
+    <div class="bmi-target">
+      <div class="bt-title">🎯 基于身高 ${PARAM.h}cm 的健康体重参考（BMI 18.5–24）</div>
+      <div class="bt-range">
+        <span class="bt-min">${hw.min}</span>
+        <span class="bt-arrow">—</span>
+        <span class="bt-max">${hw.max}</span>
+        <span class="bt-unit">kg</span>
+      </div>
+      <div class="bt-sub">
+        你的目标体重 <b style="color:${gwInRange?'var(--green2)':'var(--amber)'}">${gw}kg</b>
+        ${gwInRange?'（落在健康区间内 ✅）':'（略超健康区间上限，可下调至 '+hw.max+'kg 内）'}
+        · 当前 ${fmt1(PARAM.w)}kg，还需减 <b style="color:var(--violet2)">${toGo>0?fmt1(toGo):0}kg</b>
+        ${toGo<=0?'（已达成 🎉）':''}
+      </div>
+    </div>` : '';
+  // 健康区间参考线（18.5 / 24 / 28）
+  const refHtml=`<div class="bmi-ref"><span><i style="background:var(--blue)"></i>偏瘦 &lt;18.5</span>
+    <span><i style="background:var(--green2)"></i>正常 18.5–24</span>
+    <span><i style="background:var(--amber)"></i>超重 24–28</span>
+    <span><i style="background:var(--red)"></i>肥胖 ≥28</span></div>`;
+  // 每日 BMI 列表（倒序，最近在上）
+  const rows=rec.slice().reverse().map(d=>{
+    const b=getBMI(DATA[d].w); const c=bmiCat(b);
+    return `<div class="bmi-row"><span class="bmi-d">${d}</span>
+      <span class="bmi-v" style="color:${c.color}">${fmt2(b)}</span>
+      <span class="bmi-c" style="color:${c.color}">${c.txt}</span>
+      <span class="bmi-bar"><span style="width:${Math.min(100,Math.max(3,(b-15)/(35-15)*100))}%;background:${c.color}"></span></span></div>`;
+  }).join('');
+  box.innerHTML=`
+    ${rangeHtml}
+    <div class="summary" style="margin-bottom:12px">
+      <div class="stat"><div class="v" style="color:${cCat.color}">${fmt2(curBmi)}</div><div class="l">当前 BMI · ${cCat.txt}</div></div>
+      <div class="stat"><div class="v" style="color:${bmiDelta==null?'var(--muted)':(bmiDelta<=0?'var(--green2)':'var(--red)')}">${bmiDelta==null?'—':(bmiDelta>0?'+':'')+bmiDelta.toFixed(1)}</div><div class="l">BMI 浮动(首→末)</div></div>
+      <div class="stat"><div class="v">${rec.length}</div><div class="l">已记录天数</div></div>
+      <div class="stat"><div class="v">${firstBmi==null?'—':fmt2(firstBmi)}</div><div class="l">首记 BMI</div></div>
+      <div class="stat"><div class="v">${lastBmi==null?'—':fmt2(lastBmi)}</div><div class="l">最新 BMI</div></div>
+    </div>
+    ${refHtml}
+    <div style="margin-top:14px;font-weight:600;font-size:13px;color:var(--violet2)">📈 每日 BMI 折线趋势</div>
+    <div class="chart-box" style="height:240px;margin-top:6px"><canvas id="bmiChart"></canvas></div>
+    <div class="section-label">每日明细</div>
+    <div class="bmi-list" style="margin-top:6px">${rows||'<div class="hint">还没有体重记录，去每日打卡填「体重」后会自动累计 BMI。</div>'}</div>`;
+  drawBmiChart(rec);
+}
+/* ============ BMI 折线趋势图 ============ */
+let bmiChartObj=null;
+function drawBmiChart(rec){
+  const cv=document.getElementById('bmiChart'); if(!cv) return;
+  if(!window.Chart){
+    const s=document.createElement('script');
+    s.src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js";
+    s.onload=()=>drawBmiChart(rec); document.head.appendChild(s); return;
+  }
+  const labels=rec.slice(); // 有体重记录的日期（升序）
+  const data=labels.map(d=>{ const b=getBMI(DATA[d].w); return b==null?null:Math.round(b*10)/10; });
+  const gridC='rgba(255,255,255,.06)', tickC='#7e98a8';
+  // 每个点按 BMI 分级着色
+  const ptColors=data.map(b=> b==null?'#7e98a8':bmiCatColor(b));
+  if(bmiChartObj) bmiChartObj.destroy();
+  // 目标 BMI 与健康区间上下限参考线（用背景填充带表示健康区间）
+  const gwBmi=(()=>{ const hM=(PARAM.h||0)/100; const gw=targetWeight(); return hM?Math.round(gw/(hM*hM)*10)/10:null; })();
+  bmiChartObj=new Chart(cv,{
+    type:'line',
+    data:{labels,datasets:[
+      {label:'每日 BMI',data,borderColor:'#b08cff',backgroundColor:'rgba(176,140,255,.12)',
+       tension:.3,fill:true,pointRadius:4,pointBackgroundColor:ptColors,pointBorderColor:'#fff',pointBorderWidth:1,borderWidth:2.5},
+      {label:'健康上限 24',data:labels.map(()=>24),borderColor:'rgba(79,230,194,.55)',borderDash:[6,4],pointRadius:0,fill:false,borderWidth:1.3},
+      {label:'健康下限 18.5',data:labels.map(()=>18.5),borderColor:'rgba(106,168,255,.5)',borderDash:[6,4],pointRadius:0,fill:false,borderWidth:1.3}
+    ].concat(gwBmi?[{label:'目标 BMI '+gwBmi,data:labels.map(()=>gwBmi),borderColor:'rgba(255,184,119,.6)',borderDash:[3,3],pointRadius:0,fill:false,borderWidth:1.3}]:[])},
+    options:{responsive:true,maintainAspectRatio:false,interaction:{mode:'index',intersect:false},
+      plugins:{legend:{labels:{color:'#e6f0f0',boxWidth:14,font:{size:11}}},
+        tooltip:{callbacks:{afterBody:(items)=>{ const b=items[0]?.parsed?.y; return b!=null?('分级：'+bmiCat(b).txt):''; }}}},
+      scales:{
+        x:{ticks:{color:tickC,maxRotation:45,minRotation:0},grid:{color:gridC}},
+        y:{title:{display:true,text:'BMI',color:tickC},ticks:{color:tickC},grid:{color:gridC},
+           suggestedMin:16,suggestedMax:32}
+      }}});
+}
+/* 供折线图点着色：返回具体色值（把 CSS 变量转成实色） */
+function bmiCatColor(bmi){
+  if(bmi==null||isNaN(bmi)) return '#7e98a8';
+  if(bmi<18.5) return '#6aa8ff';
+  if(bmi<24)   return '#4fe6c2';
+  if(bmi<28)   return '#ffb877';
+  return '#ff7a85';
+}
+
+/* ============ 趋势图 ============ */
+let chartObj=null;
+function drawChart(dates){
+  const cv=document.getElementById('chart');
+  if(!window.Chart){
+    const s=document.createElement('script');
+    s.src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js";
+    s.onload=()=>drawChart(dates); document.head.appendChild(s); return;
+  }
+  const recent=dates.slice(-14);
+  const w=recent.map(d=>DATA[d].w||null);
+  const def=recent.map(d=>Math.round(dayDeficit(d)));
+  if(chartObj) chartObj.destroy();
+  // 深色冷调主题的坐标轴/网格颜色
+  const gridC='rgba(255,255,255,.06)', tickC='#7e98a8';
+  chartObj=new Chart(cv,{type:'line',data:{labels:recent,datasets:[
+    {label:'体重kg',data:w,borderColor:'#6fd3ff',backgroundColor:'#6fd3ff',yAxisID:'y',tension:.3,fill:false,pointRadius:3},
+    {label:'热量缺口',data:def,borderColor:'#6aa8ff',backgroundColor:'#6aa8ff',yAxisID:'y1',tension:.3,fill:false,pointRadius:2,borderDash:[5,4]}
+  ]},options:{responsive:true,maintainAspectRatio:false,interaction:{mode:'index',intersect:false},
+    plugins:{legend:{labels:{color:'#e6f0f0'}}},
+    scales:{
+      x:{ticks:{color:tickC},grid:{color:gridC}},
+      y:{position:'left',title:{display:true,text:'体重',color:tickC},ticks:{color:tickC},grid:{color:gridC}},
+      y1:{position:'right',title:{display:true,text:'缺口',color:tickC},ticks:{color:tickC},grid:{drawOnChartArea:false}}
+    }}});
+}
+
+/* ============ 存储 ============ */
+function planToggle(id,btn){
+  const box=document.getElementById(id);
+  const show = box.style.display==='none' || !box.style.display;
+  // 收起所有
+  document.querySelectorAll('.plan-detail').forEach(d=>d.style.display='none');
+  document.querySelectorAll('#planNav .pn').forEach(b=>b.classList.remove('on'));
+  if(show){ box.style.display='block'; btn.classList.add('on'); }
+}
+function navActive(el){
+  document.querySelectorAll('.mn-item').forEach(a=>a.classList.remove('active'));
+  el.classList.add('active');
+}
+function save(){ localStorage.setItem('diet_data',JSON.stringify(DATA)); if(SYNC.auto && SYNC.token) pushCloud(false); }
+function loadData(){ try{return JSON.parse(localStorage.getItem('diet_data'))||{};}catch(e){return {};} }
+function saveParam(){ localStorage.setItem('diet_param',JSON.stringify(PARAM)); }
+function loadParam(){ try{const p=JSON.parse(localStorage.getItem('diet_param')); if(p) return p;}catch(e){}
+  return {sex:'male',year:1993,h:183,w:93.0,goal:500,goalWeight:82}; }
+function saveAI(){ AI={key:document.getElementById('ai_key').value,model:document.getElementById('ai_model').value,base:'https://dashscope.aliyuncs.com/compatible-mode/v1'}; localStorage.setItem('diet_ai',JSON.stringify(AI)); toast('AI 配置已保存'); }
+function loadAI(){ try{const s=localStorage.getItem('diet_ai'); if(s) return JSON.parse(s);}catch(e){}
+  return {key:'sk-ws-H.EDHEXLM.mlod.MEYCIQDU05-D6OAgR5ezAOmWQaPVy4iv7s1Lvoailtbtvk1fUgIhAKuFVP1UJ32XmpPL81T-2zpRffDH5XB1-FgQC5W_RO62',model:'qwen-vl-max',base:'https://dashscope.aliyuncs.com/compatible-mode/v1'}; }
+
+/* ============ 云端同步（GitHub Gist） ============ */
+const SYNC_KEY='diet_sync';
+let SYNC={token:'',gistId:'',auto:false};
+function loadSync(){ try{const s=localStorage.getItem(SYNC_KEY); if(s) SYNC=Object.assign(SYNC,JSON.parse(s));}catch(e){} }
+function saveSync(){ localStorage.setItem(SYNC_KEY,JSON.stringify(SYNC)); refreshSyncUI(); }
+function refreshSyncUI(){
+  const t=document.getElementById('gist_token'), g=document.getElementById('gist_id'), b=document.getElementById('autoBtn'), s=document.getElementById('syncStat');
+  if(t) t.value=SYNC.token||'';
+  if(g) g.value=SYNC.gistId||'';
+  if(b) b.textContent='自动同步：'+(SYNC.auto?'开':'关');
+  if(s) s.innerHTML = SYNC.token ? ('已配置 · Gist ID：<b>'+(SYNC.gistId||'（未创建，首次上传自动生成）')+'</b>') : '未配置 Token。';
+}
+function saveSyncCfg(){
+  SYNC.token=document.getElementById('gist_token').value.trim();
+  SYNC.gistId=document.getElementById('gist_id').value.trim();
+  saveSync();
+  toast('云端同步配置已保存');
+}
+function autoSyncToggle(){ SYNC.auto=!SYNC.auto; saveSync(); }
+function setSyncStat(html,err){ const s=document.getElementById('syncStat'); if(s) s.innerHTML = err ? ('<span class="err">'+html+'</span>') : html; }
+
+/* 上传：本地覆盖云端（含 DATA/PARAM）。auto=true 时静默，否则提示。 */
+async function pushCloud(manual){
+  if(!SYNC.token){ if(manual) toast('请先填写 GitHub Token'); setSyncStat('未配置 Token，无法上传。',true); return; }
+  const payload={DATA,PARAM,AI};
+  const body={description:'16-8 减脂打卡数据（自动同步）',public:false,files:{'diet_data.json':{content:JSON.stringify(payload,null,2)}}};
+  try{
+    let url='https://api.github.com/gists', method='POST';
+    if(SYNC.gistId){ url='https://api.github.com/gists/'+SYNC.gistId; method='PATCH'; }
+    const r=await fetch(url,{method,headers:{'Authorization':'token '+SYNC.token,'Content-Type':'application/json'},body:JSON.stringify(body)});
+    if(!r.ok){ const e=await r.json().catch(()=>({})); throw new Error(e.message||('HTTP '+r.status)); }
+    const j=await r.json();
+    if(!SYNC.gistId){ SYNC.gistId=j.id; saveSync(); }
+    const time=new Date().toLocaleTimeString();
+    setSyncStat('↑ 已上传云端 · '+time+'（Gist ID：<b>'+SYNC.gistId+'</b>）');
+    if(manual) toast('已上传到云端');
+  }catch(e){ setSyncStat('上传失败：'+e.message,true); if(manual) toast('上传失败：'+e.message); }
+}
+/* 下载：云端合并到本地。同日期云端优先（覆盖），本地独有日期保留。 */
+async function pullCloud(manual){
+  if(!SYNC.token||!SYNC.gistId){ if(manual) toast('请先上传一次以生成 Gist ID'); setSyncStat('尚无 Gist ID，请先「立即上传」。',true); return; }
+  try{
+    const r=await fetch('https://api.github.com/gists/'+SYNC.gistId,{headers:{'Authorization':'token '+SYNC.token}});
+    if(!r.ok) throw new Error('HTTP '+r.status);
+    const j=await r.json();
+    const f=j.files&&j.files['diet_data.json']; if(!f) throw new Error('云端无 diet_data.json');
+    const cloud=JSON.parse(f.content);
+    // 合并：云端日期覆盖本地，本地独有日期保留
+    DATA=Object.assign({},DATA,cloud.DATA||{});
+    if(cloud.PARAM) PARAM=cloud.PARAM;
+    if(cloud.AI) AI=cloud.AI;
+    save(); saveParam();
+    render();
+    const time=new Date().toLocaleTimeString();
+    setSyncStat('↓ 已下载并合并云端数据 · '+time);
+    if(manual) toast('已从云端合并');
+  }catch(e){ setSyncStat('下载失败：'+e.message,true); if(manual) toast('下载失败：'+e.message); }
+}
+
+function recalcAll(){
+  PARAM={sex:document.getElementById('p_sex').value,year:+document.getElementById('p_year').value,
+    h:+document.getElementById('p_h').value,w:Math.round(+document.getElementById('p_w').value*10)/10,
+    goal:+document.getElementById('p_goal').value||500,
+    goalWeight:Math.round(+document.getElementById('p_gw').value*10)/10||82};
+  saveParam(); render(); toast('已按新参数重算');
+}
+function setGoal(){ recalcAll(); }
+function exportJSON(){
+  const text=JSON.stringify({DATA,PARAM,AI},null,2);
+  const fname='减脂打卡备份-'+todayStr()+'.json';
+  // 优先用 Blob 下载（HTTP 协议有效）
+  try{
+    const blob=new Blob([text],{type:'application/json'});
+    const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download=fname; a.click();
+    setTimeout(()=>URL.revokeObjectURL(a.href),5000);
+    return;
+  }catch(e){}
+  // file:// 协议回退：弹窗显示文本供复制
+  showExportDialog(text,fname);
+}
+function showExportDialog(text,fname){
+  const mask=document.createElement('div');
+  mask.style.cssText='position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,.7);display:flex;align-items:center;justify-content:center';
+  mask.onclick=function(e){if(e.target===mask)mask.remove();};
+  const box=document.createElement('div');
+  box.style.cssText='background:#162030;border:1px solid #2a3a50;border-radius:16px;padding:20px;max-width:92vw;max-height:80vh;overflow:auto;color:#c8d6e5;font-size:14px';
+  box.innerHTML='<h3 style="margin:0 0 8px;font-size:16px">导出备份数据</h3>'
+    +'<p style="color:#8899aa;font-size:12px;margin:0 0 10px">长按下方文本 → 全选 → 复制，粘贴到备忘录或发给自己保存。以后点「导入备份」粘贴回来即可恢复。</p>'
+    +'<textarea readonly style="width:100%;height:200px;background:#0c1018;color:#aaccdd;border:1px solid #2a3a50;border-radius:10px;padding:10px;font-size:12px;font-family:monospace;resize:none" onclick="this.select()">'+text+'</textarea>'
+    +'<button onclick="navigator.clipboard.writeText(this.parentElement.querySelector(\'textarea\').value);this.textContent=\'已复制!\';setTimeout(()=>this.textContent=\'复制到剪贴板\',1500)" style="margin-top:10px;width:100%;padding:12px;background:var(--violet);color:#fff;border:none;border-radius:10px;font-size:14px;font-weight:700;cursor:pointer">复制到剪贴板</button>'
+    +'<button onclick="this.parentElement.parentElement.remove()" style="margin-top:6px;width:100%;padding:10px;background:transparent;color:#8899aa;border:1px solid #2a3a50;border-radius:10px;font-size:13px;cursor:pointer">关闭</button>';
+  mask.appendChild(box);
+  document.body.appendChild(mask);
+}
+function importJSON(inp){
+  // 支持文件选择器导入
+  if(inp && inp.files && inp.files[0]){
+    const f=inp.files[0]; const r=new FileReader();
+    r.onload=()=>{ try{const o=JSON.parse(r.result); DATA=o.DATA||DATA; if(o.PARAM)PARAM=o.PARAM; save();render();toast('已导入');}catch(e){toast('导入失败');} };
+    r.readAsText(f); return;
+  }
+  // file:// 回退：弹窗粘贴 JSON 文本
+  showImportDialog();
+}
+function showImportDialog(){
+  const mask=document.createElement('div');
+  mask.style.cssText='position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,.7);display:flex;align-items:center;justify-content:center';
+  mask.onclick=function(e){if(e.target===mask)mask.remove();};
+  const box=document.createElement('div');
+  box.style.cssText='background:#162030;border:1px solid #2a3a50;border-radius:16px;padding:20px;max-width:92vw;max-height:80vh;overflow:auto;color:#c8d6e5;font-size:14px';
+  box.innerHTML='<h3 style="margin:0 0 8px;font-size:16px">导入备份数据</h3>'
+    +'<p style="color:#8899aa;font-size:12px;margin:0 0 10px">把之前导出的 JSON 文本粘贴到下方，点击导入即可恢复数据。</p>'
+    +'<textarea id="importText" placeholder="在此粘贴 JSON 备份文本..." style="width:100%;height:180px;background:#0c1018;color:#aaccdd;border:1px solid #2a3a50;border-radius:10px;padding:10px;font-size:12px;font-family:monospace;resize:none"></textarea>'
+    +'<button onclick="doImportText()" style="margin-top:10px;width:100%;padding:12px;background:var(--green);color:#fff;border:none;border-radius:10px;font-size:14px;font-weight:700;cursor:pointer">确认导入</button>'
+    +'<button onclick="this.parentElement.parentElement.remove()" style="margin-top:6px;width:100%;padding:10px;background:transparent;color:#8899aa;border:1px solid #2a3a50;border-radius:10px;font-size:13px;cursor:pointer">关闭</button>';
+  mask.appendChild(box);
+  document.body.appendChild(mask);
+}
+function doImportText(){
+  const ta=document.getElementById('importText'); if(!ta) return;
+  try{
+    const o=JSON.parse(ta.value); DATA=o.DATA||DATA;
+    if(o.PARAM)PARAM=o.PARAM; if(o.AI)AI=o.AI;
+    save();saveParam();render();toast('已导入');
+    ta.parentElement.parentElement.remove();
+  }catch(e){toast('JSON 格式错误，请检查后重试');}
+}
+function clearAll(){ if(confirm('确定清空所有打卡数据？')){ DATA={}; save(); render(); toast('已清空'); } }
+
+/* ============ 初始化 ============ */
+function init(){
+  // 出生年份下拉 1960-今年
+  const ys=document.getElementById('p_year');
+  for(let y=curYear();y>=1960;y--){ const o=document.createElement('option'); o.value=y; o.textContent=y+'年'; ys.appendChild(o); }
+  document.getElementById('p_sex').value=PARAM.sex;
+  document.getElementById('p_year').value=PARAM.year;
+  document.getElementById('p_h').value=PARAM.h;
+  document.getElementById('p_w').value=PARAM.w;
+  document.getElementById('p_goal').value=PARAM.goal||500;
+  document.getElementById('p_gw').value=PARAM.goalWeight||82;
+  document.getElementById('ai_key').value=AI.key||'';
+  document.getElementById('ai_model').value=AI.model||'qwen-vl-max';
+  loadSync(); refreshSyncUI();
+  // 启动后若已配置，则从云端拉取一次以合并多端数据
+  if(SYNC.token && SYNC.gistId){ pullCloud(false); }
+  // 检测 file:// 协议，显示提示条
+  if(location.protocol==='file:'){
+    const hint=document.getElementById('fileHint');
+    if(hint) hint.style.display='flex';
+  }
+  renderFoodPick();
+  viewDate = todayStr();
+  if(!DATA[viewDate]){ ensure(viewDate); save(); }
+  render();
+  // 移动端底部导航：滚动监听自动高亮
+  if(window.innerWidth<=768){
+    const secs=document.querySelectorAll('[id^="sec-"]');
+    const navItems=document.querySelectorAll('.mn-item');
+    const secIds=['sec-checkin','sec-food','sec-dashboard','sec-plan','sec-params'];
+    window.addEventListener('scroll',function(){
+      let current='';
+      secs.forEach(sec=>{
+        const top=sec.getBoundingClientRect().top;
+        if(top<window.innerHeight*0.4) current=sec.id;
+      });
+      navItems.forEach(a=>{
+        a.classList.toggle('active', a.getAttribute('href')==='#'+current);
+      });
+    },{passive:true});
+  }
+}
+init();
+</script>
+<script>
+// 注册 Service Worker（PWA 离线缓存）
+if('serviceWorker' in navigator){
+  navigator.serviceWorker.register('./sw.js').then(r=>console.log('SW ok')).catch(()=>{});
+}
+</script>
+</body>
+</html>
