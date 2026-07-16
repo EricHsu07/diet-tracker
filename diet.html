@@ -101,12 +101,13 @@
   .stat .v{font-size:24px;font-weight:800;color:var(--ice2);line-height:1.2}
   .stat .l{font-size:12px;color:var(--muted);margin-top:2px}
   /* 核心指标条：上浮到今日卡下方 */
-  .ministat{display:flex;flex-wrap:wrap;gap:8px;margin:-2px 0 12px}
+  .ministat{display:flex;flex-wrap:wrap;gap:8px;margin:10px 0 12px;padding:8px;background:rgba(19,34,46,.45);border:1px solid var(--line);border-radius:14px}
   .ministat .ms{flex:1;min-width:84px;background:linear-gradient(135deg,#13222e 0%,#102029 55%,#0e1d28 100%);border:1px solid var(--line);border-radius:12px;padding:9px 10px;text-align:center}
   .ministat .ms .v{font-size:17px;font-weight:800;color:var(--ice2);line-height:1.1}
   .ministat .ms .l{font-size:10px;color:var(--muted);margin-top:2px}
   .small-link{font-size:12px;color:var(--ice);text-decoration:none;cursor:pointer;font-weight:600}
   .small-link:hover{text-decoration:underline}
+  .empty-tip{width:100%;padding:18px 14px;text-align:center;color:var(--muted);background:rgba(255,255,255,.03);border:1px dashed var(--line);border-radius:12px;font-size:13px}
   .modal-bg{position:fixed;inset:0;background:rgba(16,24,40,.45);backdrop-filter:blur(4px);display:none;align-items:flex-start;justify-content:center;z-index:50;padding:40px 12px;overflow:auto}
   .modal-bg.open{display:flex;animation:fadeIn .2s ease}
   @keyframes fadeIn{from{opacity:0}to{opacity:1}}
@@ -1313,8 +1314,13 @@ function render(){
     lbl.textContent = (vd===todayStr()?'今天 ':('周'+wd+' ')) + vd;
   }
   const box=document.getElementById('cards'); box.innerHTML='';
-  const dates=Object.keys(DATA).sort().reverse();
+  // 单日视图：只渲染当前正在查看的 viewDate 一天，其余通过「前一天/后一天」切换
+  const dates=[viewDate||todayStr()];
+  if(Object.keys(DATA).length===0){
+    box.innerHTML='<div class="empty-tip">暂无打卡记录。点击上方「+ 新增今日打卡」开始记录，或点云端同步「↓ 下载合并」恢复历史数据。</div>';
+  }
   dates.forEach(d=>{
+    ensure(d); // 即使当天无数据也确保有空壳，方便直接填写
     const r=DATA[d]; const w=r.w||'';
     const bf=mealKcal(r.meals.bf), lu=mealKcal(r.meals.lu), sn=mealKcal(r.meals.sn);
     const intake=bf+lu+sn;
@@ -1432,21 +1438,9 @@ function scrollToday(){ const d=todayStr(); const el=document.querySelector(`inp
 /* ============ 操作 ============ */
 let viewDate = todayStr(); // 当前正在查看的日期
 function ensure(d){ if(!DATA[d]) DATA[d]={meals:{bf:[],lu:[],sn:[]},steps:'',sportName:'',sportMin:'',win:''}; return DATA[d]; }
-/* 日期导航：前一天 / 后一天 / 回到今天 */
+/* 日期导航：前一天 / 后一天 / 回到今天（严格按日历偏移一天，空日期也可直接填写） */
 function navDate(delta){
-  // 以当前 viewDate 为基准偏移；若当前 viewDate 不存在于 DATA，则跳到最近邻的一天
-  let target = shiftDate(viewDate, delta);
-  if(!DATA[target]){
-    const all = Object.keys(DATA).sort();
-    if(!all.length){ target = shiftDate(todayStr(), delta); }
-    else if(delta<0){ // 前一天：找比 target 小的最大日期，否则最小的
-      const prev = all.filter(d=>d<target);
-      target = prev.length? prev[prev.length-1] : all[0];
-    } else { // 后一天：找比 target 大的最小日期，否则最大的
-      const next = all.filter(d=>d>target);
-      target = next.length? next[0] : all[all.length-1];
-    }
-  }
+  let target = shiftDate(viewDate||todayStr(), delta);
   viewDate = target;
   render();
   const el=document.querySelector('input.d[value="'+target+'"]');
@@ -1815,14 +1809,19 @@ function renderSummary(){
     totalIntake+=intake; totalSport+=sport; defSum+=def; n++;
   });
   const avgDef=n?defSum/n:0;
-  // 核心指标条：上浮到今日卡下方，免下翻汇总看板
+  // 核心指标条：上浮到今日卡下方，免下翻汇总看板（始终显示，数据不足时显示占位）
   const ms=document.getElementById('miniStat');
   if(ms){
     const chg = (firstW&&lastW)? (firstW-lastW) : null;
+    const wVal = (PARAM.w && Number(PARAM.w)>0)? fmt1(PARAM.w) : '—';
+    const chgVal = chg==null?'—':((chg>0?'+':'')+fmt1(chg));
+    const chgColor = chg==null?'var(--muted)':(chg>0?'var(--green2)':'var(--red)');
+    const defVal = (avgDef>=0?'+':'')+fmt(avgDef);
+    const defColor = avgDef>=0?'var(--green)':'var(--red)';
     ms.innerHTML = `
-      <div class="ms"><div class="v">${fmt1(PARAM.w)}</div><div class="l">当前体重kg</div></div>
-      <div class="ms"><div class="v" style="color:${chg==null?'var(--muted)':(chg>0?'var(--green2)':'var(--red)')}">${chg==null?'—':(chg>0?'+':'')+fmt1(chg)}</div><div class="l">累计变化kg</div></div>
-      <div class="ms"><div class="v" style="color:${avgDef>=0?'var(--green)':'var(--red)'}">${avgDef>=0?'+':''}${fmt(avgDef)}</div><div class="l">日均缺口kcal</div></div>
+      <div class="ms"><div class="v">${wVal}</div><div class="l">当前体重kg</div></div>
+      <div class="ms"><div class="v" style="color:${chgColor}">${chgVal}</div><div class="l">累计变化kg</div></div>
+      <div class="ms"><div class="v" style="color:${defColor}">${defVal}</div><div class="l">日均缺口kcal</div></div>
       <div class="ms"><div class="v">${n}</div><div class="l">已记录天</div></div>`;
   }
   box.innerHTML=`
@@ -2028,7 +2027,7 @@ async function pushCloud(manual){
     const time=new Date().toLocaleTimeString();
     setSyncStat('↑ 已上传云端 · '+time+'（Gist ID：<b>'+SYNC.gistId+'</b>）');
     if(manual) toast('已上传到云端');
-  }catch(e){ setSyncStat('上传失败：'+e.message,true); if(manual) toast('上传失败：'+e.message); }
+  }catch(e){ const msg=e.message||'未知错误'; const tip=msg.toLowerCase().includes('rate limit')?'（GitHub API 限流，请等待 10-60 分钟后重试，或更换新的 Token）':''; setSyncStat('上传失败：'+msg+tip,true); if(manual) toast('上传失败：'+msg+tip); }
 }
 /* 下载：云端合并到本地。同日期云端优先（覆盖），本地独有日期保留。 */
 async function pullCloud(manual){
@@ -2049,7 +2048,7 @@ async function pullCloud(manual){
     const time=new Date().toLocaleTimeString();
     setSyncStat('↓ 已下载并合并云端数据 · '+time);
     if(manual) toast('已从云端合并');
-  }catch(e){ setSyncStat('下载失败：'+e.message,true); if(manual) toast('下载失败：'+e.message); }
+  }catch(e){ const msg=e.message||'未知错误'; const tip=msg.toLowerCase().includes('rate limit')?'（GitHub API 限流，请等待 10-60 分钟后重试，或更换新的 Token）':''; setSyncStat('下载失败：'+msg+tip,true); if(manual) toast('下载失败：'+msg+tip); }
 }
 
 function recalcAll(){
