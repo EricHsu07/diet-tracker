@@ -100,6 +100,11 @@
   .stat{flex:1;min-width:150px;background:linear-gradient(135deg,#13222e 0%,#102029 55%,#0e1d28 100%);border:1px solid var(--line);border-radius:14px;padding:14px 16px;box-shadow:0 4px 14px rgba(0,0,0,.25);transition:.22s}
   .stat .v{font-size:24px;font-weight:800;color:var(--ice2);line-height:1.2}
   .stat .l{font-size:12px;color:var(--muted);margin-top:2px}
+  /* 核心指标条：上浮到今日卡下方 */
+  .ministat{display:flex;flex-wrap:wrap;gap:8px;margin:-2px 0 12px}
+  .ministat .ms{flex:1;min-width:84px;background:linear-gradient(135deg,#13222e 0%,#102029 55%,#0e1d28 100%);border:1px solid var(--line);border-radius:12px;padding:9px 10px;text-align:center}
+  .ministat .ms .v{font-size:17px;font-weight:800;color:var(--ice2);line-height:1.1}
+  .ministat .ms .l{font-size:10px;color:var(--muted);margin-top:2px}
   .small-link{font-size:12px;color:var(--ice);text-decoration:none;cursor:pointer;font-weight:600}
   .small-link:hover{text-decoration:underline}
   .modal-bg{position:fixed;inset:0;background:rgba(16,24,40,.45);backdrop-filter:blur(4px);display:none;align-items:flex-start;justify-content:center;z-index:50;padding:40px 12px;overflow:auto}
@@ -219,12 +224,34 @@
     /* 汇总统计块两列 */
     .summary{gap:10px}
     .stat{flex:1 1 calc(50% - 5px);min-width:0;padding:12px}
+    /* 核心指标条手机上一行四格紧凑显示 */
+    .ministat{gap:6px}
+    .ministat .ms{min-width:0;flex:1 1 calc(25% - 5px);padding:7px 4px}
+    .ministat .ms .v{font-size:15px}
+    .ministat .ms .l{font-size:9px}
     .stat .v{font-size:20px}
     /* 打卡卡片单列 */
-    .daycards{grid-template-columns:1fr}
-    .daycard .grid2{grid-template-columns:1fr 1fr;gap:8px}
+    .daycards{grid-template-columns:1fr;gap:10px}
+    .daycard{padding:12px 12px 10px}
+    .daycard .dh{margin-bottom:6px}
+    .daycard .dh .d{font-size:14px;font-weight:700;width:130px}
+    /* 移动端：把原纵向堆叠改为横向紧凑行，降低卡片高度、减少下翻 */
+    .daycard .grid2{grid-template-columns:1fr 1fr;gap:6px;margin-bottom:6px}
+    .daycard .grid2 .blk label{font-size:10px}
+    .daycard .grid2 .blk input{padding:7px 8px;font-size:14px}
+    .daycard .meal{grid-template-columns:repeat(3,1fr);gap:6px;margin:6px 0}
+    .daycard .meal .mh{font-size:11px;padding:2px 0}
+    .daycard .meal .mk{font-size:12px}
+    .daycard .sport-row{grid-template-columns:1.5fr .8fr;gap:6px;margin:4px 0}
+    .daycard .sport-row .blk label{font-size:10px}
+    .daycard .sport-row .blk input,.daycard .sport-row .blk select{padding:7px 8px;font-size:13px}
+    .daycard .meal-note{font-size:10px;margin-top:2px}
+    .daycard .defbox{display:flex;align-items:baseline;gap:8px;padding:6px 10px;margin-top:6px}
+    .daycard .defbox .v{font-size:18px}
+    .daycard .defbox .l{font-size:10px}
+    .daycard .win-btns{margin-top:4px}
+    .daycard .win-btns button{padding:5px;font-size:11px}
     .daycard .blk input,.daycard .blk select{padding:9px;font-size:15px}
-    .daycard .sport-row{grid-template-columns:1.4fr .6fr}
     /* 食物选择卡片更大更易点 */
     .food-pick{gap:9px;max-height:none;padding:2px}
     .food-pick .fi{min-width:0;flex:1 1 calc(50% - 5px);padding:11px}
@@ -392,6 +419,8 @@
 
   <!-- 今日快捷卡 -->
   <div class="today-bar" id="todayBar"></div>
+  <!-- 核心指标条（上浮，免下翻汇总看板） -->
+  <div class="ministat" id="miniStat"></div>
 
   <!-- 每日打卡 -->
   <div class="card" id="sec-checkin">
@@ -1786,6 +1815,16 @@ function renderSummary(){
     totalIntake+=intake; totalSport+=sport; defSum+=def; n++;
   });
   const avgDef=n?defSum/n:0;
+  // 核心指标条：上浮到今日卡下方，免下翻汇总看板
+  const ms=document.getElementById('miniStat');
+  if(ms){
+    const chg = (firstW&&lastW)? (firstW-lastW) : null;
+    ms.innerHTML = `
+      <div class="ms"><div class="v">${fmt1(PARAM.w)}</div><div class="l">当前体重kg</div></div>
+      <div class="ms"><div class="v" style="color:${chg==null?'var(--muted)':(chg>0?'var(--green2)':'var(--red)')}">${chg==null?'—':(chg>0?'+':'')+fmt1(chg)}</div><div class="l">累计变化kg</div></div>
+      <div class="ms"><div class="v" style="color:${avgDef>=0?'var(--green)':'var(--red)'}">${avgDef>=0?'+':''}${fmt(avgDef)}</div><div class="l">日均缺口kcal</div></div>
+      <div class="ms"><div class="v">${n}</div><div class="l">已记录天</div></div>`;
+  }
   box.innerHTML=`
     <div class="stat"><div class="v">${fmt1(PARAM.w)}</div><div class="l">当前体重(参数)kg</div></div>
     <div class="stat"><div class="v">${firstW&&lastW?fmt((firstW-lastW).toFixed(1)):'—'}</div><div class="l">累计变化 kg</div></div>
