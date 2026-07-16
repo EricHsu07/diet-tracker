@@ -1961,9 +1961,12 @@ function refreshSyncUI(){
   if(b) b.textContent='自动同步：'+(SYNC.auto?'开':'关');
   if(s) s.innerHTML = SYNC.token ? ('已配置 · Gist ID：<b>'+(SYNC.gistId||'（未创建，首次上传自动生成）')+'</b>') : '未配置 Token。';
 }
+/* 清洗：只保留 ASCII 可打印字符，去除首尾及中间的空格/换行/全角字符等非法字符。
+   GitHub token 为纯 ASCII（ghp_ / github_pat_ 开头），混入任何非 ISO-8859-1 字符都会导致 fetch header 报错。 */
+function cleanAscii(s){ return (s||'').replace(/[^\x20-\x7E]/g,'').trim(); }
 function saveSyncCfg(){
-  SYNC.token=document.getElementById('gist_token').value.trim();
-  SYNC.gistId=document.getElementById('gist_id').value.trim();
+  SYNC.token=cleanAscii(document.getElementById('gist_token').value);
+  SYNC.gistId=cleanAscii(document.getElementById('gist_id').value);
   saveSync();
   toast('云端同步配置已保存');
 }
@@ -1972,6 +1975,7 @@ function setSyncStat(html,err){ const s=document.getElementById('syncStat'); if(
 
 /* 上传：本地覆盖云端（含 DATA/PARAM）。auto=true 时静默，否则提示。 */
 async function pushCloud(manual){
+  SYNC.token=cleanAscii(SYNC.token); SYNC.gistId=cleanAscii(SYNC.gistId);
   if(!SYNC.token){ if(manual) toast('请先填写 GitHub Token'); setSyncStat('未配置 Token，无法上传。',true); return; }
   const payload={DATA,PARAM,AI};
   const body={description:'16-8 减脂打卡数据（自动同步）',public:false,files:{'diet_data.json':{content:JSON.stringify(payload,null,2)}}};
@@ -1989,6 +1993,7 @@ async function pushCloud(manual){
 }
 /* 下载：云端合并到本地。同日期云端优先（覆盖），本地独有日期保留。 */
 async function pullCloud(manual){
+  SYNC.token=cleanAscii(SYNC.token); SYNC.gistId=cleanAscii(SYNC.gistId);
   if(!SYNC.token||!SYNC.gistId){ if(manual) toast('请先上传一次以生成 Gist ID'); setSyncStat('尚无 Gist ID，请先「立即上传」。',true); return; }
   try{
     const r=await fetch('https://api.github.com/gists/'+SYNC.gistId,{headers:{'Authorization':'token '+SYNC.token}});
