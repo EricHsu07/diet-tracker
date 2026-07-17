@@ -10,9 +10,11 @@
 <meta property="og:image" content="https://via.placeholder.com/120x120/15a86b/ffffff?text=16:8">
 <!-- 微信状态栏/安卓任务卡主题色 -->
 <meta name="theme-color" content="#0e1822">
+<meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="format-detection" content="telephone=no">
+<link rel="icon" href="./pwa-icons/icon-192.png">
 <link rel="manifest" href="./manifest.json">
 <link rel="apple-touch-icon" href="./pwa-icons/icon-192.png">
 <style>
@@ -1263,10 +1265,13 @@ function sportKcal(name,min,w){
   return sp.met * w * (min/60) * factor;
 }
 function intakeOf(r){
+  if(!r) return 0;
   const w=r.w||PARAM.w;
-  return mealKcal(r.meals.bf)+mealKcal(r.meals.lu)+mealKcal(r.meals.sn);
+  const m=r.meals||{};
+  return mealKcal(m.bf)+mealKcal(m.lu)+mealKcal(m.sn);
 }
 function sportOf(r){
+  if(!r) return 0;
   const w=r.w||PARAM.w;
   return sportKcal(r.sportName,r.sportMin,w);
 }
@@ -1803,7 +1808,7 @@ function renderSummary(){
   const tdee=Math.round(getTDEE());
   let totalIntake=0,totalSport=0,n=0,defSum=0;
   dates.forEach(d=>{
-    const r=DATA[d];
+    const r=DATA[d]; if(!r) return; // 跳过空壳/异常记录，避免单条脏数据拖垮整块看板
     const intake=intakeOf(r);
     const sport=sportOf(r);
     const def=dayDeficit(d);
