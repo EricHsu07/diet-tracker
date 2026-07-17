@@ -241,6 +241,14 @@
     .row{gap:8px}
     .fld{width:100%}
     .fld input,.fld select{width:100%}
+    /* 个人参数：手机上两列紧凑网格，避免一屏拉太长 */
+    .params-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:8px 10px;align-items:stretch}
+    .params-grid .fld{flex-direction:column;gap:4px}
+    .params-grid .fld label{font-size:11px}
+    .params-grid .fld input,.params-grid .fld select{width:100%!important;font-size:14px;padding:7px 9px}
+    /* 第二行活动系数/BMI 信息在手机上紧密排布 */
+    .card#sec-params > .row:nth-of-type(2){flex-wrap:wrap;gap:6px;font-size:12px}
+    .card#sec-params > .row:nth-of-type(2) button{margin-top:4px}
     /* 今日仪表盘竖向堆叠 */
     .today-bar{flex-direction:column;align-items:stretch;gap:14px;padding:16px}
     .today-info{min-width:0}
@@ -428,7 +436,7 @@
   <!-- 个人参数 -->
   <div class="card" id="sec-params">
     <h2>① 个人参数（活动系数自动算）</h2>
-    <div class="row">
+    <div class="row params-grid">
       <div class="fld"><label>性别</label><select id="p_sex"><option value="male">男</option><option value="female">女</option></select></div>
       <div class="fld"><label>出生年份</label>
         <select id="p_year"></select>
@@ -480,7 +488,37 @@
     <div class="hint">预警：摄入超标或热量缺口为负时，卡片变橙红。运动选「项目+填分钟」，羽毛球等轮歇运动已按有效时间折算。</div>
   </div>
 
-  <!-- 设置：AI 拍照识别 + 云端同步，合并为可折叠区 -->
+  <!-- 汇总 -->
+  <div class="card" id="sec-dashboard">
+    <h2>④ 汇总看板</h2>
+    <div class="range-bar" id="rangeBar">
+      <div class="range-tabs">
+        <button class="rt ${viewRange.type==='all'?'on':''}" onclick="setRange('all')">全部</button>
+        <button class="rt ${viewRange.type==='30'?'on':''}" onclick="setRange('30')">近30天</button>
+        <button class="rt ${viewRange.type==='90'?'on':''}" onclick="setRange('90')">近90天</button>
+        <button class="rt ${viewRange.type==='180'?'on':''}" onclick="setRange('180')">近180天</button>
+        <button class="rt ${viewRange.type==='custom'?'on':''}" onclick="setRange('custom')">自定义</button>
+      </div>
+      <div class="range-custom" id="rangeCustom" style="display:${viewRange.type==='custom'?'flex':'none'}">
+        <input type="date" id="rFrom" max="${todayStr()}" value="${viewRange.from}">
+        <span>至</span>
+        <input type="date" id="rTo" max="${todayStr()}" value="${viewRange.to}">
+        <button class="ghost btn-sm" onclick="applyCustomRange()">应用</button>
+      </div>
+    </div>
+    <div class="summary" id="summary"></div>
+    <div style="margin-top:12px;font-weight:600;font-size:13px">近 14 天体重 & 热量缺口趋势</div>
+    <div class="chart-box"><canvas id="chart"></canvas></div>
+  </div>
+
+  <!-- BMI 独立看板 -->
+  <div class="card">
+    <h2>⑤ BMI 汇总看板（每日浮动）</h2>
+    <div id="bmiBoard"></div>
+    <div class="hint">BMI = 体重(kg) ÷ 身高(m)²，按你每一天填的体重自动计算。绿色区间为健康范围，向下浮动说明在变瘦，向上则需注意。身高取个人参数①中的身高。</div>
+  </div>
+
+  <!-- 设置：AI 拍照识别 + 云端同步，合并为可折叠区（置于 BMI 看板下方） -->
   <div class="card">
     <details class="fold" open>
       <summary>③ 设置（AI 拍照识别 / 云端同步）</summary>
@@ -512,35 +550,6 @@
     </details>
   </div>
 
-  <!-- 汇总 -->
-  <div class="card" id="sec-dashboard">
-    <h2>④ 汇总看板</h2>
-    <div class="range-bar" id="rangeBar">
-      <div class="range-tabs">
-        <button class="rt ${viewRange.type==='all'?'on':''}" onclick="setRange('all')">全部</button>
-        <button class="rt ${viewRange.type==='30'?'on':''}" onclick="setRange('30')">近30天</button>
-        <button class="rt ${viewRange.type==='90'?'on':''}" onclick="setRange('90')">近90天</button>
-        <button class="rt ${viewRange.type==='180'?'on':''}" onclick="setRange('180')">近180天</button>
-        <button class="rt ${viewRange.type==='custom'?'on':''}" onclick="setRange('custom')">自定义</button>
-      </div>
-      <div class="range-custom" id="rangeCustom" style="display:${viewRange.type==='custom'?'flex':'none'}">
-        <input type="date" id="rFrom" max="${todayStr()}" value="${viewRange.from}">
-        <span>至</span>
-        <input type="date" id="rTo" max="${todayStr()}" value="${viewRange.to}">
-        <button class="ghost btn-sm" onclick="applyCustomRange()">应用</button>
-      </div>
-    </div>
-    <div class="summary" id="summary"></div>
-    <div style="margin-top:12px;font-weight:600;font-size:13px">近 14 天体重 & 热量缺口趋势</div>
-    <div class="chart-box"><canvas id="chart"></canvas></div>
-  </div>
-
-  <!-- BMI 独立看板 -->
-  <div class="card">
-    <h2>⑤ BMI 汇总看板（每日浮动）</h2>
-    <div id="bmiBoard"></div>
-    <div class="hint">BMI = 体重(kg) ÷ 身高(m)²，按你每一天填的体重自动计算。绿色区间为健康范围，向下浮动说明在变瘦，向上则需注意。身高取个人参数①中的身高。</div>
-  </div>
 
   <div class="card" id="sec-food">
     <h2>⑤ 食物库（内置 + 外食榜）</h2>
