@@ -1823,11 +1823,11 @@ function renderSummary(){
   });
   const avgDef=n?defSum/n:0;
   // 核心指标条：上浮到今日卡下方，免下翻汇总看板（始终显示，数据不足时显示占位）
+  const chg = (firstW!=null&&lastW!=null)? (firstW-lastW) : null;
+  const todayW = DATA[todayStr()]?.w;
+  const wVal = (todayW!=null&&Number(todayW)>0)? fmt1(todayW) : ((PARAM.w && Number(PARAM.w)>0)? fmt1(PARAM.w) : '—');
   const ms=document.getElementById('miniStat');
   if(ms){
-    const chg = (firstW!=null&&lastW!=null)? (firstW-lastW) : null;
-    const todayW = DATA[todayStr()]?.w;
-    const wVal = (todayW!=null&&Number(todayW)>0)? fmt1(todayW) : ((PARAM.w && Number(PARAM.w)>0)? fmt1(PARAM.w) : '—');
     const chgVal = chg==null?'—':((chg>0?'+':'')+fmt1(chg));
     const chgColor = chg==null?'var(--muted)':(chg>0?'var(--green2)':'var(--red)');
     const defVal = (avgDef>=0?'+':'')+fmt(avgDef);
