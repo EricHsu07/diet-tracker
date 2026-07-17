@@ -1374,7 +1374,14 @@ function render(){
     box.appendChild(card);
   });
   renderTodayBar();
-  renderSummary();
+  try{
+    renderSummary();
+  }catch(e){
+    // 把错误直接显示到看板容器，方便手机端无控制台时也能看到报错并截图
+    const sb=document.getElementById('summary');
+    if(sb) sb.innerHTML='<div class="empty-tip" style="color:var(--red)">看板渲染出错：'+(e&&e.message||e)+'</div>';
+    console.error('renderSummary 出错:',e);
+  }
 }
 function mealBlock(d,meal,name,k){
   return `<div class="meal">
@@ -1838,8 +1845,9 @@ function renderSummary(){
     <div class="stat"><div class="v">${fmt(totalIntake/n||0)}</div><div class="l">日均摄入 kcal</div></div>
     <div class="stat"><div class="v">${fmt(totalSport/n||0)}</div><div class="l">日均运动消耗 kcal</div></div>
     <div class="stat"><div class="v" style="color:${avgDef>=0?'var(--green)':'var(--red)'}">${avgDef>=0?'+':''}${fmt(avgDef)}</div><div class="l">日均热量缺口 kcal</div></div>`;
-  drawChart(dates);
-  renderBmiBoard(dates);
+  // 图表与 BMI 看板独立容错：即使它们出错，也不影响上方看板数值显示
+  try{ drawChart(dates); }catch(e){ console.warn('drawChart 出错:',e); }
+  try{ renderBmiBoard(dates); }catch(e){ console.warn('renderBmiBoard 出错:',e); }
 }
 
 /* ============ BMI 独立汇总看板 ============ */
@@ -1847,7 +1855,7 @@ function renderBmiBoard(){
   const dates=Object.keys(DATA).sort();
   const box=document.getElementById('bmiBoard'); if(!box) return;
   // 有体重记录的日期
-  const rec=dates.filter(d=>DATA[d].w);
+  const rec=dates.filter(d=>DATA[d]&&DATA[d].w);
   const curBmi=getBMI(PARAM.w); const cCat=bmiCat(curBmi);
   const firstBmi=getBMI(rec.length?DATA[rec[0]].w:null);
   const lastBmi=getBMI(rec.length?DATA[rec[rec.length-1]].w:null);
@@ -1955,7 +1963,7 @@ function drawChart(dates){
     s.onload=()=>drawChart(dates); document.head.appendChild(s); return;
   }
   const recent=dates.slice(-14);
-  const w=recent.map(d=>DATA[d].w||null);
+  const w=recent.map(d=>(DATA[d]&&DATA[d].w)||null);
   const def=recent.map(d=>Math.round(dayDeficit(d)));
   if(chartObj) chartObj.destroy();
   // 深色冷调主题的坐标轴/网格颜色
