@@ -98,10 +98,13 @@
   .tag .x{cursor:pointer;color:var(--muted);font-weight:700;padding:0 2px;border-radius:50%}
   .tag .x:hover{color:var(--red);background:#3a2226}
   .tag input{width:50px;padding:2px 4px;font-size:11px;border:1px solid #1d3a4a;border-radius:6px;background:var(--bg2);color:var(--text)}
-  .summary{display:flex;flex-wrap:wrap;gap:14px}
-  .stat{flex:1;min-width:150px;background:linear-gradient(135deg,#13222e 0%,#102029 55%,#0e1d28 100%);border:1px solid var(--line);border-radius:14px;padding:14px 16px;box-shadow:0 4px 14px rgba(0,0,0,.25);transition:.22s}
-  .stat .v{font-size:24px;font-weight:800;color:var(--ice2);line-height:1.2}
-  .stat .l{font-size:12px;color:var(--muted);margin-top:2px}
+  .summary{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
+  .stat{background:linear-gradient(135deg,#13222e 0%,#102029 55%,#0e1d28 100%);border:1px solid var(--line);border-radius:14px;padding:12px 14px;box-shadow:0 4px 14px rgba(0,0,0,.25);transition:.22s;min-width:0}
+  .stat .v{font-size:19px;font-weight:800;color:var(--ice2);line-height:1.2;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .stat .l{font-size:11px;color:var(--muted);margin-top:2px}
+  /* 主指标：当前体重 / 累计变化 用更大字号突出 */
+  .stat-main{grid-column:span 1;background:linear-gradient(135deg,#15303f 0%,#112633 60%,#0f2030 100%);border-color:#1f4a5e}
+  .stat-main .v{font-size:30px}
   /* 核心指标条：上浮到今日卡下方 */
   .ministat{display:flex;flex-wrap:wrap;gap:8px;margin:10px 0 12px;padding:8px;background:rgba(19,34,46,.45);border:1px solid var(--line);border-radius:14px}
   .ministat .ms{flex:1;min-width:84px;background:linear-gradient(135deg,#13222e 0%,#102029 55%,#0e1d28 100%);border:1px solid var(--line);border-radius:12px;padding:9px 10px;text-align:center}
@@ -207,6 +210,15 @@
   .range-tabs .rt.on{background:linear-gradient(120deg,var(--violet),var(--violet-d));color:#fff;border-color:transparent}
   .range-custom{display:flex;align-items:center;gap:6px;margin-top:10px;flex-wrap:wrap;font-size:12px;color:var(--muted)}
   .range-custom input[type=date]{padding:7px 8px;font-size:14px;border:1px solid var(--line);border-radius:9px;background:var(--bg2);color:var(--text)}
+  /* ===== 折叠区（数据管理 / 设置） ===== */
+  .fold{border:1px solid var(--line);border-radius:12px;background:var(--bg2);padding:0;margin:0 0 12px;overflow:hidden}
+  .fold>summary{list-style:none;cursor:pointer;padding:11px 14px;font-weight:700;font-size:13.5px;color:var(--ice2);display:flex;align-items:center;gap:6px;user-select:none}
+  .fold>summary::-webkit-details-marker{display:none}
+  .fold>summary::before{content:"▸";color:var(--violet2);font-size:11px;transition:transform .2s}
+  .fold[open]>summary::before{transform:rotate(90deg)}
+  .fold-body{padding:4px 14px 14px}
+  .fold-body .row{margin-top:6px}
+  .sub-h{font-size:13px;color:var(--violet2);margin:4px 0 8px;font-weight:800}
   .meal-note{font-size:11px;color:var(--muted);margin-top:6px;line-height:1.5}
   .search-bar{position:relative}
   .search-bar input{padding-left:34px;width:100%}
@@ -232,15 +244,18 @@
     /* 今日仪表盘竖向堆叠 */
     .today-bar{flex-direction:column;align-items:stretch;gap:14px;padding:16px}
     .today-info{min-width:0}
-    /* 汇总统计块两列 */
-    .summary{gap:10px}
-    .stat{flex:1 1 calc(50% - 5px);min-width:0;padding:12px}
+    /* 汇总统计块：手机上三列紧凑网格，主指标占两格 */
+    .summary{gap:8px;grid-template-columns:repeat(3,1fr)}
+    .stat-main{grid-column:span 1;padding:10px 8px}
+    .stat-main .v{font-size:22px}
+    .stat{flex:none;padding:9px 8px;min-width:0}
+    .stat .v{font-size:16px}
+    .stat .l{font-size:9.5px}
     /* 核心指标条手机上一行四格紧凑显示 */
     .ministat{gap:6px}
     .ministat .ms{min-width:0;flex:1 1 calc(25% - 5px);padding:7px 4px}
     .ministat .ms .v{font-size:15px}
     .ministat .ms .l{font-size:9px}
-    .stat .v{font-size:20px}
     /* 打卡卡片单列 */
     .daycards{grid-template-columns:1fr;gap:10px}
     .daycard{padding:12px 12px 10px}
@@ -450,44 +465,51 @@
       <button class="cta" onclick="addToday()">＋ 添加今日打卡</button>
       <button class="ghost" onclick="document.getElementById('addDatePick').showPicker?.()||document.getElementById('addDatePick').click()">+ 添加指定日期</button>
       <input type="date" id="addDatePick" max="${todayStr()}" style="display:none" onchange="addDateFromPicker(this.value)">
-      <button class="ghost" onclick="exportJSON()">导出备份(JSON)</button>
-      <button class="ghost" onclick="document.getElementById('imp').click()">导入备份</button>
-      <input id="imp" type="file" accept="application/json" style="display:none" onchange="importJSON(this)">
-      <button class="danger" onclick="clearAll()">清空全部</button>
     </div>
+    <!-- 低频/易误触的数据操作收进折叠区 -->
+    <details class="fold" id="dataMgr">
+      <summary>⚙ 数据管理（导出 / 导入 / 清空）</summary>
+      <div class="fold-body">
+        <button class="ghost" onclick="exportJSON()">导出备份(JSON)</button>
+        <button class="ghost" onclick="document.getElementById('imp').click()">导入备份</button>
+        <input id="imp" type="file" accept="application/json" style="display:none" onchange="importJSON(this)">
+        <button class="danger" onclick="clearAll()">清空全部</button>
+      </div>
+    </details>
     <div class="daycards" id="cards"></div>
     <div class="hint">预警：摄入超标或热量缺口为负时，卡片变橙红。运动选「项目+填分钟」，羽毛球等轮歇运动已按有效时间折算。</div>
   </div>
 
-  <!-- AI 配置 -->
+  <!-- 设置：AI 拍照识别 + 云端同步，合并为可折叠区 -->
   <div class="card">
-    <h2>③ AI 拍照识别设置</h2>
-    <div class="row">
-      <div class="fld"><label>DashScope API Key</label><input id="ai_key" type="password" placeholder="sk-..." style="width:280px"></div>
-      <div class="fld"><label>模型</label><select id="ai_model">
-        <option value="qwen-vl-max">qwen-vl-max（推荐）</option>
-        <option value="qwen2.5-vl-72b-instruct">qwen2.5-vl-72b-instruct</option>
-        <option value="qwen2.5-vl-7b-instruct">qwen2.5-vl-7b-instruct</option>
-      </select></div>
-      <button class="ghost" onclick="saveAI()">保存密钥</button>
-      <a class="small-link" href="https://dashscope.console.aliyun.com/" target="_blank">去开通/获取Key</a>
-    </div>
-    <div class="hint">在阿里云百炼控制台开通「视觉理解」模型即得 Key（注册送免费额度，无需信用卡）。密钥仅存你本机浏览器。</div>
-  </div>
-
-  <!-- 云端同步（Gist） -->
-  <div class="card">
-    <h2>③-2 云端同步（多设备/外网）</h2>
-    <div class="hint">用 GitHub Gist 把打卡数据存到云端。配置一次后，本机改动会自动上传；换手机/电脑打开本页会先下载云端数据再合并。Gist 设为「私密」即可，仅你自己可见。</div>
-    <div class="sync-row">
-      <input id="gist_token" class="f-tok" type="password" placeholder="GitHub Token（仅 gist 权限）">
-      <input id="gist_id" class="f-id" placeholder="Gist ID（首次留空自动建）">
-      <button class="ghost" onclick="saveSyncCfg()">保存配置</button>
-      <button class="cta" onclick="pushCloud(true)">↑ 立即上传</button>
-      <button class="ghost" onclick="pullCloud(true)">↓ 下载合并</button>
-      <button class="ghost" onclick="autoSyncToggle()" id="autoBtn">自动同步：关</button>
-    </div>
-    <div class="sync-stat" id="syncStat">未配置。需先在 github.com → Settings → Developer settings → Personal access tokens 生成一个勾选 gist 权限的 token。</div>
+    <details class="fold" open>
+      <summary>③ 设置（AI 拍照识别 / 云端同步）</summary>
+      <div class="fold-body">
+        <h3 class="sub-h">AI 拍照识别设置</h3>
+        <div class="row">
+          <div class="fld"><label>DashScope API Key</label><input id="ai_key" type="password" placeholder="sk-..." style="width:280px"></div>
+          <div class="fld"><label>模型</label><select id="ai_model">
+            <option value="qwen-vl-max">qwen-vl-max（推荐）</option>
+            <option value="qwen2.5-vl-72b-instruct">qwen2.5-vl-72b-instruct</option>
+            <option value="qwen2.5-vl-7b-instruct">qwen2.5-vl-7b-instruct</option>
+          </select></div>
+          <button class="ghost" onclick="saveAI()">保存密钥</button>
+          <a class="small-link" href="https://dashscope.console.aliyun.com/" target="_blank">去开通/获取Key</a>
+        </div>
+        <div class="hint">在阿里云百炼控制台开通「视觉理解」模型即得 Key（注册送免费额度，无需信用卡）。密钥仅存你本机浏览器。</div>
+        <h3 class="sub-h" style="margin-top:16px">云端同步（多设备/外网）</h3>
+        <div class="hint">用 GitHub Gist 把打卡数据存到云端。配置一次后，本机改动会自动上传；换手机/电脑打开本页会先下载云端数据再合并。Gist 设为「私密」即可，仅你自己可见。</div>
+        <div class="sync-row">
+          <input id="gist_token" class="f-tok" type="password" placeholder="GitHub Token（仅 gist 权限）">
+          <input id="gist_id" class="f-id" placeholder="Gist ID（首次留空自动建）">
+          <button class="ghost" onclick="saveSyncCfg()">保存配置</button>
+          <button class="cta" onclick="pushCloud(true)">↑ 立即上传</button>
+          <button class="ghost" onclick="pullCloud(true)">↓ 下载合并</button>
+          <button class="ghost" onclick="autoSyncToggle()" id="autoBtn">自动同步：关</button>
+        </div>
+        <div class="sync-stat" id="syncStat">未配置。需先在 github.com → Settings → Developer settings → Personal access tokens 生成一个勾选 gist 权限的 token。</div>
+      </div>
+    </details>
   </div>
 
   <!-- 汇总 -->
@@ -1938,13 +1960,15 @@ function renderSummary(){
       <div class="ms"><div class="v" style="color:${defColor}">${defVal}</div><div class="l">日均缺口kcal</div></div>
       <div class="ms"><div class="v">${n}</div><div class="l">已记录天</div></div>`;
   }
+  const chgStr = firstW!=null&&lastW!=null ? ((firstW-lastW)>0?'+':'')+fmt1(firstW-lastW) : '—';
+  const chgColor = firstW!=null&&lastW!=null ? (firstW-lastW>0?'var(--green2)':'var(--red)') : 'var(--muted)';
   box.innerHTML=`
-    <div class="stat"><div class="v">${fmt1(wVal)}</div><div class="l">当前体重kg</div></div>
-    <div class="stat"><div class="v">${firstW!=null&&lastW!=null?((firstW-lastW)>0?'+':'')+fmt1(firstW-lastW):'—'}</div><div class="l">累计变化 kg</div></div>
-    <div class="stat"><div class="v">${tdee}</div><div class="l">每日总消耗 TDEE kcal</div></div>
-    <div class="stat"><div class="v">${fmt(totalIntake/n||0)}</div><div class="l">日均摄入 kcal</div></div>
-    <div class="stat"><div class="v">${fmt(totalSport/n||0)}</div><div class="l">日均运动消耗 kcal</div></div>
-    <div class="stat"><div class="v" style="color:${avgDef>=0?'var(--green)':'var(--red)'}">${avgDef>=0?'+':''}${fmt(avgDef)}</div><div class="l">日均热量缺口 kcal</div></div>`;
+    <div class="stat stat-main"><div class="v">${fmt1(wVal)}</div><div class="l">当前体重 kg</div></div>
+    <div class="stat stat-main"><div class="v" style="color:${chgColor}">${chgStr}</div><div class="l">累计变化 kg</div></div>
+    <div class="stat"><div class="v">${tdee}</div><div class="l">每日消耗 TDEE</div></div>
+    <div class="stat"><div class="v">${fmt(totalIntake/n||0)}</div><div class="l">日均摄入</div></div>
+    <div class="stat"><div class="v">${fmt(totalSport/n||0)}</div><div class="l">日均运动</div></div>
+    <div class="stat"><div class="v" style="color:${avgDef>=0?'var(--green)':'var(--red)'}">${avgDef>=0?'+':''}${fmt(avgDef)}</div><div class="l">日均缺口</div></div>`;
   // 图表与 BMI 看板独立容错：即使它们出错，也不影响上方看板数值显示
   try{ drawChart(dates); }catch(e){ console.warn('drawChart 出错:',e); }
   try{ renderBmiBoard(dates); }catch(e){ console.warn('renderBmiBoard 出错:',e); }
