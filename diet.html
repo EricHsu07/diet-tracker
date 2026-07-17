@@ -199,6 +199,14 @@
   .add-row{margin-bottom:14px;display:flex;flex-wrap:wrap;gap:8px}
   .add-row .cta{background:var(--grad-main);color:#0a1430;box-shadow:0 4px 14px rgba(124,92,255,.32);padding:11px 22px;font-size:14px}
   .add-row .cta:hover{background:linear-gradient(120deg,var(--violet),var(--violet-d));transform:translateY(-1px);box-shadow:0 6px 18px rgba(124,92,255,.44)}
+  /* ===== 汇总区间选择栏 ===== */
+  .range-bar{background:var(--bg2);border:1px solid var(--line);border-radius:12px;padding:10px;margin-bottom:12px}
+  .range-tabs{display:flex;flex-wrap:wrap;gap:6px}
+  .range-tabs .rt{flex:1 1 auto;min-width:54px;padding:8px 6px;border:1px solid var(--line);border-radius:9px;background:#0e1f2b;color:var(--ice2);font-size:12.5px;font-weight:700;cursor:pointer;transition:.15s}
+  .range-tabs .rt:active{transform:scale(.97)}
+  .range-tabs .rt.on{background:linear-gradient(120deg,var(--violet),var(--violet-d));color:#fff;border-color:transparent}
+  .range-custom{display:flex;align-items:center;gap:6px;margin-top:10px;flex-wrap:wrap;font-size:12px;color:var(--muted)}
+  .range-custom input[type=date]{padding:7px 8px;font-size:14px;border:1px solid var(--line);border-radius:9px;background:var(--bg2);color:var(--text)}
   .meal-note{font-size:11px;color:var(--muted);margin-top:6px;line-height:1.5}
   .search-bar{position:relative}
   .search-bar input{padding-left:34px;width:100%}
@@ -238,18 +246,23 @@
     .daycard{padding:12px 12px 10px}
     .daycard .dh{margin-bottom:6px}
     .daycard .dh .d{font-size:14px;font-weight:700;width:130px}
-    /* 移动端：把原纵向堆叠改为横向紧凑行，降低卡片高度、减少下翻 */
+    /* 移动端：三餐横向三列紧凑，整体压低卡片高度、减少下翻 */
     .daycard .grid2{grid-template-columns:1fr 1fr;gap:6px;margin-bottom:6px}
-    .daycard .grid2 .blk label{font-size:10px}
-    .daycard .grid2 .blk input{padding:7px 8px;font-size:14px}
-    .daycard .meal{grid-template-columns:repeat(3,1fr);gap:6px;margin:6px 0}
-    .daycard .meal .mh{font-size:11px;padding:2px 0}
-    .daycard .meal .mk{font-size:12px}
+    .daycard .grid2 .blk label{font-size:10px;margin-bottom:2px}
+    .daycard .grid2 .blk input{padding:7px 8px;font-size:15px}
+    /* 外层餐食容器：三列并列 */
+    .daycard .meal{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin:6px 0;padding:0;background:none;border:none}
+    /* 内层单餐块：去掉背景与边框，仅保留文字 */
+    .daycard .meal .meal{background:none;border:none;padding:6px 4px;margin:0}
+    .daycard .meal .mt{font-size:10.5px;font-weight:700;color:var(--muted);flex-direction:column;align-items:flex-start;gap:2px}
+    .daycard .meal .mt .kcal{font-size:12px;color:var(--ice2);font-weight:800}
+    .daycard .meal .mbtn{margin-top:4px}
+    .daycard .meal .mbtn button{padding:4px 6px;font-size:11px}
     .daycard .sport-row{grid-template-columns:1.5fr .8fr;gap:6px;margin:4px 0}
-    .daycard .sport-row .blk label{font-size:10px}
-    .daycard .sport-row .blk input,.daycard .sport-row .blk select{padding:7px 8px;font-size:13px}
+    .daycard .sport-row .blk label{font-size:10px;margin-bottom:2px}
+    .daycard .sport-row .blk input,.daycard .sport-row .blk select{padding:7px 8px;font-size:14px}
     .daycard .meal-note{font-size:10px;margin-top:2px}
-    .daycard .defbox{display:flex;align-items:baseline;gap:8px;padding:6px 10px;margin-top:6px}
+    .daycard .defbox{display:flex;align-items:baseline;gap:8px;padding:7px 10px;margin-top:6px}
     .daycard .defbox .v{font-size:18px}
     .daycard .defbox .l{font-size:10px}
     .daycard .win-btns{margin-top:4px}
@@ -435,7 +448,8 @@
     </div>
     <div class="add-row">
       <button class="cta" onclick="addToday()">＋ 添加今日打卡</button>
-      <button class="ghost" onclick="addDatePrompt()">+ 添加指定日期</button>
+      <button class="ghost" onclick="document.getElementById('addDatePick').showPicker?.()||document.getElementById('addDatePick').click()">+ 添加指定日期</button>
+      <input type="date" id="addDatePick" max="${todayStr()}" style="display:none" onchange="addDateFromPicker(this.value)">
       <button class="ghost" onclick="exportJSON()">导出备份(JSON)</button>
       <button class="ghost" onclick="document.getElementById('imp').click()">导入备份</button>
       <input id="imp" type="file" accept="application/json" style="display:none" onchange="importJSON(this)">
@@ -479,6 +493,21 @@
   <!-- 汇总 -->
   <div class="card" id="sec-dashboard">
     <h2>④ 汇总看板</h2>
+    <div class="range-bar" id="rangeBar">
+      <div class="range-tabs">
+        <button class="rt ${viewRange.type==='all'?'on':''}" onclick="setRange('all')">全部</button>
+        <button class="rt ${viewRange.type==='30'?'on':''}" onclick="setRange('30')">近30天</button>
+        <button class="rt ${viewRange.type==='90'?'on':''}" onclick="setRange('90')">近90天</button>
+        <button class="rt ${viewRange.type==='180'?'on':''}" onclick="setRange('180')">近180天</button>
+        <button class="rt ${viewRange.type==='custom'?'on':''}" onclick="setRange('custom')">自定义</button>
+      </div>
+      <div class="range-custom" id="rangeCustom" style="display:${viewRange.type==='custom'?'flex':'none'}">
+        <input type="date" id="rFrom" max="${todayStr()}" value="${viewRange.from}">
+        <span>至</span>
+        <input type="date" id="rTo" max="${todayStr()}" value="${viewRange.to}">
+        <button class="ghost btn-sm" onclick="applyCustomRange()">应用</button>
+      </div>
+    </div>
     <div class="summary" id="summary"></div>
     <div style="margin-top:12px;font-weight:600;font-size:13px">近 14 天体重 & 热量缺口趋势</div>
     <div class="chart-box"><canvas id="chart"></canvas></div>
@@ -1311,6 +1340,7 @@ function renderParam(){
 /* ============ 渲染卡片式打卡 ============ */
 function render(){
   renderParam();
+  renderRangeUI();
   // 更新日期导航标签
   const lbl=document.getElementById('dnLabel');
   if(lbl){
@@ -1449,10 +1479,71 @@ function scrollToday(){ const d=todayStr(); const el=document.querySelector(`inp
 
 /* ============ 操作 ============ */
 let viewDate = todayStr(); // 当前正在查看的日期
+// 汇总看板区间：{type:'all'|'30'|'90'|'180'|'custom', from:'', to:''}
+// 最大范围不超过今天，自定义起止也强制 <= 今天
+let viewRange = {type:'all', from:'', to:''};
+function maxDate(){ return todayStr(); }
+// 根据 viewRange 返回需要参与汇总的日期数组（升序），且全部 <= 今天
+function rangeDates(){
+  const all = Object.keys(DATA).filter(d=>d<=todayStr()).sort();
+  const t = viewRange.type;
+  if(t==='all') return all;
+  if(t==='30'||t==='90'||t==='180'){
+    const days=+t; const cut=shiftDate(todayStr(), -days+1); // 含今天共 days 天
+    return all.filter(d=>d>=cut);
+  }
+  if(t==='custom'){
+    const from = viewRange.from || all[0] || todayStr();
+    const to = viewRange.to && viewRange.to<=todayStr() ? viewRange.to : todayStr();
+    return all.filter(d=>d>=from && d<=to);
+  }
+  return all;
+}
 function ensure(d){ if(!DATA[d]) DATA[d]={meals:{bf:[],lu:[],sn:[]},steps:'',sportName:'',sportMin:'',win:''}; return DATA[d]; }
-/* 日期导航：前一天 / 后一天 / 回到今天（严格按日历偏移一天，空日期也可直接填写） */
+/* 汇总区间切换 */
+function setRange(t){
+  viewRange.type=t;
+  if(t==='custom'){
+    // 首次进入自定义，默认填成已有数据的最早~今天
+    if(!viewRange.from){ const all=Object.keys(DATA).filter(d=>d<=todayStr()).sort(); viewRange.from=all[0]||todayStr(); }
+    if(!viewRange.to) viewRange.to=todayStr();
+  }
+  renderRangeUI();
+  render();
+}
+function applyCustomRange(){
+  const f=document.getElementById('rFrom').value;
+  const to=document.getElementById('rTo').value;
+  if(!f){ toast('请选择开始日期'); return; }
+  let tf=f, tt=to||todayStr();
+  if(tt>todayStr()) tt=todayStr();      // 强制不超过今天
+  if(tf>tt){ toast('开始日期不能晚于结束日期'); return; }
+  viewRange.from=tf; viewRange.to=tt;
+  render();
+}
+function renderRangeUI(){
+  const bar=document.getElementById('rangeBar'); if(!bar) return;
+  bar.querySelectorAll('.rt').forEach(b=>{
+    const t=b.getAttribute('data-t')||b.textContent;
+    // 用 class 重新标记 on
+  });
+  // 重写字面按钮高亮
+  const map={'全部':'all','近30天':'30','近90天':'90','近180天':'180','自定义':'custom'};
+  bar.querySelectorAll('.rt').forEach(b=>{
+    const t=map[b.textContent.trim()];
+    b.classList.toggle('on', t===viewRange.type);
+    b.setAttribute('data-t',t);
+  });
+  const cus=document.getElementById('rangeCustom');
+  if(cus) cus.style.display = viewRange.type==='custom'?'flex':'none';
+}
+/* 日期导航：前一天 / 后一天 / 回到今天（严格按日历偏移一天，空日期也可直接填写）
+   限制：后一天最多到今天，不允许翻到未来日期 */
 function navDate(delta){
   let target = shiftDate(viewDate||todayStr(), delta);
+  const today=todayStr();
+  if(target>today){ target=today; toast('已是最新（今天），不能翻到未来'); }
+  if(target<today && delta<0){ /* 允许向前翻任意历史 */ }
   viewDate = target;
   render();
   const el=document.querySelector('input.d[value="'+target+'"]');
@@ -1461,6 +1552,15 @@ function navDate(delta){
 function goToday(){ viewDate=todayStr(); ensure(viewDate); save(); render(); const el=document.querySelector('input.d[value="'+viewDate+'"]'); if(el) el.closest('.daycard').scrollIntoView({behavior:'smooth',block:'center'}); }
 function addToday(){ const d=todayStr(); ensure(d); save(); render(); toast('已添加 '+d); }
 function addDatePrompt(){ const d=prompt('输入日期(YYYY-MM-DD)：',todayStr()); if(d){ ensure(d); save(); render(); toast('已添加 '+d);} }
+/* 日历控件选择指定日期（不超过今天） */
+function addDateFromPicker(d){
+  const pick=document.getElementById('addDatePick');
+  if(!d){ pick.value=''; return; }   // 取消了选择
+  const today=todayStr();
+  if(d>today){ toast('不能添加未来日期（'+d+'）'); pick.value=''; return; }
+  ensure(d); save(); viewDate=d; render(); toast('已添加 '+d);
+  pick.value='';
+}
 function setDate(old,nu){ if(old===nu) return; nu=(nu||'').trim(); if(!nu){toast('日期不能为空');return;} if(DATA[nu]){toast('该日期已存在，请用「添加指定日期」');return;} if(!confirm('确认把 '+old+' 的打卡数据改到 '+nu+' 吗？\n（此操作会移动该日全部数据）')){ render(); return; } DATA[nu]=DATA[old]; delete DATA[old]; viewDate=nu; save(); render(); }
 function upd(d,k,v){ ensure(d); if(k==='w') DATA[d][k]=v===''?'':Math.round(+v*10)/10; else if(k==='steps') DATA[d][k]=v===''?'':+v; else DATA[d][k]=v; save(); render(); }
 function updSport(d,k,v){ ensure(d); DATA[d][k==='name'?'sportName':'sportMin'] = v===''?'':(k==='min'?+v:v); save(); render(); }
@@ -1807,7 +1907,7 @@ function findFood(name){
 
 /* ============ 汇总 ============ */
 function renderSummary(){
-  const dates=Object.keys(DATA).sort();
+  const dates=rangeDates();
   const box=document.getElementById('summary');
   // 累计变化：取「有体重记录」的最早一天与最近一天，避免空壳日把指标拖成 —
   const wDates=dates.filter(d=>DATA[d]&&DATA[d].w);
@@ -1840,7 +1940,7 @@ function renderSummary(){
   }
   box.innerHTML=`
     <div class="stat"><div class="v">${fmt1(wVal)}</div><div class="l">当前体重kg</div></div>
-    <div class="stat"><div class="v">${firstW!=null&&lastW!=null?fmt((firstW-lastW).toFixed(1)):'—'}</div><div class="l">累计变化 kg</div></div>
+    <div class="stat"><div class="v">${firstW!=null&&lastW!=null?((firstW-lastW)>0?'+':'')+fmt1(firstW-lastW):'—'}</div><div class="l">累计变化 kg</div></div>
     <div class="stat"><div class="v">${tdee}</div><div class="l">每日总消耗 TDEE kcal</div></div>
     <div class="stat"><div class="v">${fmt(totalIntake/n||0)}</div><div class="l">日均摄入 kcal</div></div>
     <div class="stat"><div class="v">${fmt(totalSport/n||0)}</div><div class="l">日均运动消耗 kcal</div></div>
@@ -1852,7 +1952,7 @@ function renderSummary(){
 
 /* ============ BMI 独立汇总看板 ============ */
 function renderBmiBoard(){
-  const dates=Object.keys(DATA).sort();
+  const dates=rangeDates();
   const box=document.getElementById('bmiBoard'); if(!box) return;
   // 有体重记录的日期
   const rec=dates.filter(d=>DATA[d]&&DATA[d].w);
