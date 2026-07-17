@@ -490,7 +490,7 @@
 
   <!-- 汇总 -->
   <div class="card" id="sec-dashboard">
-    <h2>④ 汇总看板</h2>
+    <h2>③ 汇总看板</h2>
     <div class="range-bar" id="rangeBar">
       <div class="range-tabs">
         <button class="rt ${viewRange.type==='all'?'on':''}" onclick="setRange('all')">全部</button>
@@ -513,7 +513,7 @@
 
   <!-- BMI 独立看板 -->
   <div class="card">
-    <h2>⑤ BMI 汇总看板（每日浮动）</h2>
+    <h2>④ BMI 汇总看板（每日浮动）</h2>
     <div id="bmiBoard"></div>
     <div class="hint">BMI = 体重(kg) ÷ 身高(m)²，按你每一天填的体重自动计算。绿色区间为健康范围，向下浮动说明在变瘦，向上则需注意。身高取个人参数①中的身高。</div>
   </div>
@@ -521,7 +521,7 @@
   <!-- 设置：AI 拍照识别 + 云端同步，合并为可折叠区（置于 BMI 看板下方） -->
   <div class="card">
     <details class="fold" open>
-      <summary>③ 设置（AI 拍照识别 / 云端同步）</summary>
+      <summary>⑤ 设置（AI 拍照识别 / 云端同步）</summary>
       <div class="fold-body">
         <h3 class="sub-h">AI 拍照识别设置</h3>
         <div class="row">
@@ -552,7 +552,7 @@
 
 
   <div class="card" id="sec-food">
-    <h2>⑤ 食物库（内置 + 外食榜）</h2>
+    <h2>⑥ 食物库（内置 + 外食榜）</h2>
     <div class="tab-bar" style="margin-bottom:10px">
       <button class="tab on" id="ft_all" onclick="setFoodTab('all')">全部</button>
       <button class="tab" id="ft_builtin" onclick="setFoodTab('builtin')">🥗 内置库</button>
@@ -567,7 +567,7 @@
 
   <!-- 减肥方案 -->
   <div class="card" id="sec-plan">
-    <h2>⑥ 我的减肥方案（16:8 轻断食法）</h2>
+    <h2>⑦ 我的减肥方案（16:8 轻断食法）</h2>
     <div class="plan-nav" id="planNav">
       <button class="pn on" onclick="planToggle('pn1',this)">📋 计划总览</button>
       <button class="pn" onclick="planToggle('pn2',this)">🍽 每日食谱</button>
